@@ -9,8 +9,8 @@
  * Math.random, so a given seed always produces the same trace.
  */
 
-import { mulberry32 } from './rng';
-import type { PerceptionEvent, SensorWindow } from './types';
+import { mulberry32 } from './rng.ts';
+import type { PerceptionEvent, SensorWindow } from './types.ts';
 import {
   CHARGE_GAP_MAX_MINUTES,
   CHARGE_GAP_MIN_MINUTES,
@@ -27,7 +27,7 @@ import {
   QUIET_PHASE_RATE_FACTOR,
   SENSITIVITY,
   WINDOW_SECONDS,
-} from './constants';
+} from './constants.ts';
 
 const MINUTE_MS = 60 * 1000;
 const WINDOW_MS = WINDOW_SECONDS * 1000;

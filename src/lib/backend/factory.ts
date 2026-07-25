@@ -1,37 +1,50 @@
 /**
  * Resolves the single HeldBackend instance for the app, once, from
  * `VITE_BACKEND` ('mock' | 'supabase', default 'mock'). Callers import
- * `getHeldBackend()` — never `MockBackend` or a future `SupabaseBackend`
- * directly, so swapping implementations never touches a call site.
+ * `getHeldBackend()` — never `MockBackend` or `SupabaseBackend` directly,
+ * so swapping implementations never touches a call site.
+ *
+ * Async, unlike a plain constructor call, because resolving a real
+ * `SupabaseBackend` means resolving the authenticated user and her
+ * `patients` row first (see `supabaseBackend.ts`'s `create()`) — there is
+ * no honest synchronous version of that. `MockBackend` is still
+ * constructed synchronously internally; it's just wrapped in an
+ * already-resolved promise so callers have one call shape regardless of
+ * which backend is selected.
  */
 
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { HeldBackend } from './HeldBackend';
 import { MockBackend } from './mockBackend';
+import { SupabaseBackend } from './supabaseBackend';
 
 type BackendKind = 'mock' | 'supabase';
 
 function resolveBackendKind(): BackendKind {
   const raw = (import.meta.env.VITE_BACKEND as string | undefined)?.trim().toLowerCase();
-  if (raw === 'supabase') {
-    return 'supabase';
-  }
-  return 'mock';
+  return raw === 'supabase' ? 'supabase' : 'mock';
 }
 
-let instance: HeldBackend | null = null;
+function createSupabaseClient(): SupabaseClient {
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!url || !anonKey) {
+    throw new Error(
+      'VITE_BACKEND=supabase requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to be set.'
+    );
+  }
+  return createClient(url, anonKey);
+}
 
-export function getHeldBackend(): HeldBackend {
+let instance: Promise<HeldBackend> | null = null;
+
+export function getHeldBackend(): Promise<HeldBackend> {
   if (!instance) {
     const kind = resolveBackendKind();
-    if (kind === 'supabase') {
-      // Phase 3 introduces SupabaseBackend. Until then this fails loudly
-      // rather than silently falling back, so a misconfigured demo can't
-      // quietly run on the wrong backend.
-      throw new Error(
-        "VITE_BACKEND=supabase is not implemented yet (arrives in Phase 3). Unset it, or set VITE_BACKEND=mock."
-      );
-    }
-    instance = new MockBackend();
+    instance =
+      kind === 'supabase'
+        ? SupabaseBackend.create(createSupabaseClient())
+        : Promise.resolve(new MockBackend());
   }
   return instance;
 }

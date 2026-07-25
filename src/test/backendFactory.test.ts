@@ -8,18 +8,21 @@ afterEach(() => {
 });
 
 describe('getHeldBackend', () => {
-  it('defaults to the mock backend when VITE_BACKEND is unset', () => {
+  it('defaults to the mock backend when VITE_BACKEND is unset', async () => {
     vi.stubEnv('VITE_BACKEND', '');
-    expect(getHeldBackend()).toBeInstanceOf(MockBackend);
+    expect(await getHeldBackend()).toBeInstanceOf(MockBackend);
   });
 
-  it('returns the same cached instance on repeated calls', () => {
+  it('returns the same cached instance on repeated calls', async () => {
     vi.stubEnv('VITE_BACKEND', 'mock');
-    expect(getHeldBackend()).toBe(getHeldBackend());
+    const [first, second] = await Promise.all([getHeldBackend(), getHeldBackend()]);
+    expect(first).toBe(second);
   });
 
-  it('throws rather than silently running the wrong backend when VITE_BACKEND=supabase', () => {
+  it('throws rather than silently running the wrong backend when VITE_BACKEND=supabase has no Supabase config', () => {
     vi.stubEnv('VITE_BACKEND', 'supabase');
-    expect(() => getHeldBackend()).toThrow(/Phase 3/);
+    vi.stubEnv('VITE_SUPABASE_URL', '');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+    expect(() => getHeldBackend()).toThrow(/VITE_SUPABASE_URL/);
   });
 });

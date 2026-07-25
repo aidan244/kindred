@@ -9,8 +9,8 @@
  * why an alert escalates to a phone call rather than an attendance.
  */
 
-import { WINDOWS_PER_BIN } from './aggregate';
-import { allQuietIntervals } from './features';
+import { WINDOWS_PER_BIN } from './aggregate.ts';
+import { allQuietIntervals } from './features.ts';
 import {
   DETECTOR_MIN_TRAILING_COVERAGE,
   DETECTOR_QUIET_INTERVAL_MIN_COVERAGE,
@@ -20,8 +20,8 @@ import {
   DETECTOR_SUSTAINED_HOURS,
   DETECTOR_TRAILING_COVERAGE_HOURS,
   DETECTOR_VERSION,
-} from './constants';
-import type { Baseline, DetectorContext, DetectorFiring, MovementBin } from './types';
+} from './constants.ts';
+import type { Baseline, DetectorContext, DetectorFiring, MovementBin } from './types.ts';
 
 const HOUR_MS = 60 * 60 * 1000;
 

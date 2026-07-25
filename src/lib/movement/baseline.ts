@@ -7,10 +7,10 @@
  * encoding that expectation.
  */
 
-import { WINDOWS_PER_BIN } from './aggregate';
-import { activeFractionByHour } from './features';
-import { BASELINE_MIN_DAY_COVERAGE, BASELINE_MIN_DAYS, BASELINE_ROLLING_DAYS } from './constants';
-import type { Baseline, MovementBin } from './types';
+import { WINDOWS_PER_BIN } from './aggregate.ts';
+import { activeFractionByHour } from './features.ts';
+import { BASELINE_MIN_DAY_COVERAGE, BASELINE_MIN_DAYS, BASELINE_ROLLING_DAYS } from './constants.ts';
+import type { Baseline, MovementBin } from './types.ts';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BINS_PER_DAY = (24 * 60) / 5; // 5-minute resolution

@@ -6,7 +6,7 @@
  * windows were present.
  */
 
-import type { MovementBin, SensorWindow } from './types';
+import type { MovementBin, SensorWindow } from './types.ts';
 
 export const BIN_MINUTES = 5;
 export const WINDOWS_PER_BIN = 75; // 5 minutes / 4-second windows

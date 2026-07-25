@@ -4,8 +4,8 @@
  * computes — an uncovered bin is absent information, never a zero.
  */
 
-import { BIN_MINUTES, WINDOWS_PER_BIN } from './aggregate';
-import { SENSITIVITY } from './constants';
+import { BIN_MINUTES, WINDOWS_PER_BIN } from './aggregate.ts';
+import { SENSITIVITY } from './constants.ts';
 import type {
   ActiveFractionByHour,
   BurstStructure,
@@ -13,7 +13,7 @@ import type {
   FeatureSet,
   MovementBin,
   QuietInterval,
-} from './types';
+} from './types.ts';
 
 const CLUSTER_WINDOW_BINS = 3; // 15 minutes at 5-minute bins — an engineering
 // threshold for "close together", not a sourced clinical figure.
