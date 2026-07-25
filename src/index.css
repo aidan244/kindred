@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* Self-hosted type — bundled by Vite, zero network calls at runtime.
+ * Alegreya Sans, latin subset only. Weights are deliberately few:
+ * 300 (hero sizes only, >= 30px), 400 (body), 500 (controls and emphasis).
+ * 700 is loaded as a guard-rail so an accidental `font-bold` degrades to a
+ * real cut rather than a synthesised one — but see design-plan.md: 700 is
+ * not part of the system and should not be used. */
+@import '@fontsource/alegreya-sans/latin-300.css';
+@import '@fontsource/alegreya-sans/latin-400.css';
+@import '@fontsource/alegreya-sans/latin-500.css';
+@import '@fontsource/alegreya-sans/latin-700.css';
+
+/*
+ * Maps the raw token values in styles/tokens.css to Tailwind utilities.
+ * Screens use these utilities (e.g. `bg-surface text-text-muted text-body
+ * rounded-card`) instead of hardcoding any colour, size or radius. The
+ * values themselves live only in tokens.css.
+ */
+/* `static` so every token below is emitted even when no utility happens to
+ * reference it — the ambient visualisations read several of these from raw
+ * CSS and inline SVG, where Tailwind cannot see the usage. */
+@theme static {
+  /* Colour: bg-bg, bg-surface, bg-surface-hi, text-text, text-text-muted,
+   * text-accent, bg-emergency, border-line, text-on-accent, ... */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hi: var(--surface-hi);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-emergency: var(--emergency);
+  --color-on-accent: var(--on-accent);
+  --color-on-emergency: var(--on-emergency);
+  --color-line: var(--line);
+  --color-focus: var(--focus);
+
+  /* Type. Each role carries its own size, leading, tracking and weight, so
+   * `text-body` or `text-title` alone is always correct. Do not compose
+   * these with font-* or tracking-* utilities. */
+  --font-sans: var(--font-stack);
+
+  --text-display: 2.625rem; /* 42px — one per screen, at most */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.022em;
+  --text-display--font-weight: 300;
+
+  --text-title: 1.875rem; /* 30px — screen title */
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.016em;
+  --text-title--font-weight: 300;
+
+  --text-lead: 1.4375rem; /* 23px — the sentence under a title */
+  --text-lead--line-height: 1.42;
+  --text-lead--letter-spacing: -0.006em;
+  --text-lead--font-weight: 400;
+
+  --text-body: 1.1875rem; /* 19px — default */
+  --text-body--line-height: 1.55;
+  --text-body--letter-spacing: 0em;
+  --text-body--font-weight: 400;
+
+  --text-label: 1.1875rem; /* 19px — control labels */
+  --text-label--line-height: 1.25;
+  --text-label--letter-spacing: 0.005em;
+  --text-label--font-weight: 500;
+
+  --text-caption: 1rem; /* 16px — metadata, timestamps */
+  --text-caption--line-height: 1.45;
+  --text-caption--letter-spacing: 0.012em;
+  --text-caption--font-weight: 400;
+
+  --text-micro: 0.875rem; /* 14px — orientation labels ONLY */
+  --text-micro--line-height: 1.35;
+  --text-micro--letter-spacing: 0.05em;
+  --text-micro--font-weight: 400;
+
+  /* Radius: rounded-chip, rounded-card, rounded-panel, rounded-pill. */
+  --radius-chip: var(--r-chip);
+  --radius-card: var(--r-card);
+  --radius-panel: var(--r-panel);
+  --radius-pill: var(--r-pill);
+
+  /* Elevation: shadow-float. The only shadow in the system. */
+  --shadow-float: var(--elev-float);
+
+  /* Motion: ease-soft (entrances) and ease-breath (ambient loops). */
+  --ease-soft: var(--ease-soft-out);
+  --ease-breath: var(--ease-breathe);
+
+  /* animate-breath — the one shared ambient loop. */
+  --animate-breath: breath var(--dur-breath) var(--ease-breathe) infinite;
+}
+
+@keyframes breath {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.035);
+  }
+}
+
+/* `tap` — minimum touch target. Every interactive element carries it. */
+@utility tap {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+}
+
+/* `dock-safe` — bottom padding that clears the docked CheckInControl.
+ * Every scrolling screen carries it on its scroll container. */
+@utility dock-safe {
+  padding-bottom: calc(var(--dock-clearance) + env(safe-area-inset-bottom, 0px));
+}
+
+/* --------------------------------------------------------------------------
+ * Base element defaults
+ * ------------------------------------------------------------------------ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1.1875rem; /* 19px — Alegreya Sans has a modest x-height */
+  line-height: 1.55;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings default to the light cut. Never use 300 below 30px — it goes
+ * thin and haloed on the night background. */
+h1,
+h2,
+h3 {
+  font-weight: 300;
+  letter-spacing: -0.016em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background-color: rgb(var(--accent-rgb) / 0.28);
+  color: var(--text);
+}
+
+/* Visible keyboard focus everywhere; follows the element's own corner. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: inherit;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Reduced motion. Ambient views additionally check matchMedia in JS and
+ * swap to their static composition — see design-plan.md.
+ * ------------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

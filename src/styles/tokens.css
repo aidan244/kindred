@@ -1,0 +1,142 @@
+/*
+ * KINDRED design tokens.
+ *
+ * This is the ONLY file in the project that should contain raw hex colour
+ * values. Everything else (Tailwind utilities, components) consumes these
+ * via the CSS custom properties below (mapped to Tailwind utilities in
+ * src/index.css). A design agent should be able to restyle the whole app by
+ * editing only the values in this file.
+ *
+ * ---------------------------------------------------------------------------
+ * THE METAPHOR: lamplight.
+ *
+ * A warm bedside lamp switched on in a dark room at 3am. The neutral ramp is
+ * NOT grey — it is one continuous chromatic ramp that rotates hue with value:
+ * darks carry a trace of violet (shadows under warm light go cool), lights
+ * carry a trace of amber (surfaces near the lamp go warm). That single rule
+ * generates every neutral in both themes and is why nothing here reads as
+ * clinical or as flat beige.
+ *
+ * Elevation is light, not shadow: a surface nearer the lamp is lighter. The
+ * ramp always steps UP (bg -> surface -> surface-hi) in both themes.
+ * ---------------------------------------------------------------------------
+ *
+ * Two warm themes, switched by setting data-theme="night" | "day" on <html>.
+ * Night is the default and the demo theme. See src/theme/useThemeSync.ts.
+ *
+ * Contrast: every text pairing below is >= 4.5:1. Numbers are stated in
+ * design-plan.md and must be re-verified if any value here changes.
+ */
+
+/* --------------------------------------------------------------------------
+ * Theme-independent tokens: shape, rhythm, motion, type.
+ * ------------------------------------------------------------------------ */
+:root {
+  /* Type ----------------------------------------------------------------
+   * Exposed to Tailwind as --font-sans (see src/index.css @theme). Named
+   * differently here so the @theme mapping is not self-referential. */
+  --font-stack:
+    'Alegreya Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Radius language: soft and generous, never square. -------------------
+   * chip  - inputs, chips, small tiles
+   * card  - cards, list rows, the ambient panels
+   * panel - full-width panels, sheets, the live view frame
+   * pill  - every button and control
+   */
+  --r-chip: 14px;
+  --r-card: 22px;
+  --r-panel: 30px;
+  --r-pill: 999px;
+
+  /* Rhythm ------------------------------------------------------------- */
+  --tap-min: 56px; /* she may be shaking; nothing smaller is tappable */
+  --gutter: 24px; /* screen side padding at 390px */
+  --content-max: 420px; /* content never sprawls wider than this */
+  --dock-clearance: 112px; /* bottom padding every scrolling screen reserves */
+
+  /* Motion: slow and ambient. Nothing ticks, pulses, counts or races. --- */
+  --dur-press: 120ms; /* opacity-only press feedback */
+  --dur-screen: 320ms; /* route / screen transition */
+  --dur-enter: 420ms; /* element or sheet entrance */
+  --dur-settle: 900ms; /* something coming to rest */
+  --dur-breath: 9s; /* the canonical ambient breath cycle */
+  --dur-ring: 7.5s; /* live-view movement ring lifetime */
+
+  /* Exposed to Tailwind as ease-soft / ease-breath (see @theme). */
+  --ease-soft-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* entrances; no overshoot */
+  --ease-breathe: cubic-bezier(0.37, 0, 0.63, 1); /* sinusoidal; ambient loops */
+  --ease-ripple: cubic-bezier(0.16, 0.72, 0.28, 1); /* spreads, then loses energy */
+
+  /* Lamp wash -----------------------------------------------------------
+   * Ready-made alpha steps of the accent, for the ambient visualisations.
+   * Resolved per theme via --accent-rgb: at night these read as emitted
+   * glow on darkness; in day the same steps read as warm tone laid onto
+   * paper. Same construction, correct in both.
+   */
+  --lamp-1: rgb(var(--accent-rgb) / 0.05);
+  --lamp-2: rgb(var(--accent-rgb) / 0.11);
+  --lamp-3: rgb(var(--accent-rgb) / 0.2);
+  --lamp-4: rgb(var(--accent-rgb) / 0.36);
+  --lamp-5: rgb(var(--accent-rgb) / 0.62);
+}
+
+/* --------------------------------------------------------------------------
+ * NIGHT (default, and the demo theme)
+ * ------------------------------------------------------------------------ */
+:root,
+:root[data-theme='night'] {
+  color-scheme: dark;
+
+  --bg: #1c1619; /* violet-trace shadow, the unlit room */
+  --surface: #292125;
+  --surface-hi: #352b30;
+
+  --text: #f4ede8; /* 15.38:1 on bg */
+  --text-muted: #bbaa9c; /*  7.93:1 on bg  (was #b3a3a8; see design-plan.md) */
+  --accent: #e8b478; /*  9.53:1 on bg — the lamp */
+  --emergency: #e85b50; /*  5.13:1 on bg  (was #e5544b; see design-plan.md) */
+
+  --accent-rgb: 232 180 120;
+  --text-rgb: 244 237 232;
+
+  /* Label colour ON a filled control. Never invent another one. */
+  --on-accent: #1c1619; /* 9.53:1 on accent */
+  --on-emergency: #1c1619; /* 5.13:1 on emergency */
+
+  --line: #3b3035; /* 1px separators, control borders — decorative only */
+  --focus: #e8b478; /* focus ring; 9.53:1 on bg, 7.29:1 on surface-hi */
+  --scrim: rgb(12 8 10 / 0.72);
+
+  /* Elevation is light; this shadow exists only for the one docked control. */
+  --elev-float: 0 10px 34px -10px rgb(0 0 0 / 0.66);
+}
+
+/* --------------------------------------------------------------------------
+ * DAY (07:00–20:00 local, per the shared demo clock)
+ * The same lamp seen in daylight: warm paper, the light drawn as tone.
+ * ------------------------------------------------------------------------ */
+:root[data-theme='day'] {
+  color-scheme: light;
+
+  --bg: #efe6e1; /* warm sand, deliberately deeper than an off-white */
+  --surface: #f6efe9;
+  --surface-hi: #fbf6f1;
+
+  --text: #2a2226; /* 12.60:1 on bg */
+  --text-muted: #665a60; /*  5.34:1 on bg */
+  --accent: #8a5717; /*  4.94:1 on bg  (was #96601f; see design-plan.md) */
+  --emergency: #b3302a; /*  5.06:1 on bg */
+
+  --accent-rgb: 138 87 23;
+  --text-rgb: 42 34 38;
+
+  --on-accent: #efe6e1; /* 4.94:1 on accent */
+  --on-emergency: #efe6e1; /* 5.06:1 on emergency */
+
+  --line: #e1d4cb;
+  --focus: #8a5717; /* 4.94:1 on bg, 5.66:1 on surface-hi */
+  --scrim: rgb(58 40 30 / 0.42);
+
+  --elev-float: 0 10px 30px -12px rgb(90 60 35 / 0.28);
+}
