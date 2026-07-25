@@ -27,7 +27,13 @@ import type {
   HistoryFlag,
   ReportData,
 } from '../types';
-import { REPORT_DISCLAIMER, onboardingQuestions, redFlagQuestions } from '../data/clinicalContent';
+import {
+  REPORT_DISCLAIMER,
+  REPORT_VOICE_NOTE_NOTE,
+  formatFollowUpAnswerValue,
+  onboardingQuestions,
+  redFlagCategories,
+} from '../data/clinicalContent';
 import type {
   MultiSelectOnboardingQuestion,
   YesNoUnsureOnboardingQuestion,
@@ -228,25 +234,76 @@ function buildEntryParagraphs(report: ReportData): string[] {
   return [howItStarted, `Timestamp: ${formatDateTime(report.submittedAt)}`];
 }
 
+/**
+ * Renders one category's block, category-by-category (held-build-brief.md
+ * "Report contents"): the gate question and her answer, any additional gate
+ * questions (the Collapse category only), each answered follow-up with its
+ * answer, her detail text, and a voice-note line — in that order, one
+ * category at a time, using `redFlagCategories`' own order so the report
+ * reads in the same sequence she was asked.
+ *
+ * Honest, not merely accurate, about categories she was never asked
+ * (`hardStopEndedEarly`): a hard-stop interrupt means later categories were
+ * never reached, which reads very differently on a clinical document from
+ * "she was asked and said no" — conflating the two would be exactly the
+ * kind of silent interpretation this report must not do.
+ */
 function buildRedFlagParagraphs(report: ReportData): string[] {
-  return redFlagQuestions.map((question) => {
-    const answer = report.redFlagAnswers.find(
-      (a) => a.questionId === question.id
-    );
+  const paragraphs: string[] = [];
+
+  for (const category of redFlagCategories) {
+    const answer = report.categoryAnswers.find((a) => a.categoryId === category.id);
+
     if (!answer) {
-      return `${question.question} - not answered`;
+      paragraphs.push(
+        report.hardStopEndedEarly
+          ? `${category.gateQuestion} - not asked — check-in ended early to show emergency contact`
+          : `${category.gateQuestion} - not asked`
+      );
+      continue;
     }
-    const answerLabel = answer.answer === 'yes' ? 'Yes' : 'No';
+
+    paragraphs.push(`${category.gateQuestion} - ${answer.gateAnswer === 'yes' ? 'Yes' : 'No'}`);
+
+    category.additionalGateQuestions?.forEach((prompt, index) => {
+      const value = answer.additionalGateAnswers?.[index];
+      if (value !== undefined) {
+        paragraphs.push(`${prompt} - ${value === 'yes' ? 'Yes' : 'No'}`);
+      }
+    });
+
+    if (answer.gateAnswer === 'yes') {
+      for (const followUp of category.followUps) {
+        const fuAnswer = answer.followUpAnswers.find((f) => f.followUpId === followUp.id);
+        if (fuAnswer) {
+          paragraphs.push(
+            `${followUp.prompt} - ${formatFollowUpAnswerValue(fuAnswer.value, followUp.options)}`
+          );
+        }
+      }
+    }
+
     const detail = answer.detail?.trim();
-    return detail
-      ? `${question.question} - ${answerLabel} (additional detail: ${detail})`
-      : `${question.question} - ${answerLabel}`;
-  });
+    if (detail) {
+      paragraphs.push(`Additional detail: ${detail}`);
+    }
+    // A voice note is its own paragraph, immediately after the category's
+    // lines — not parenthesised into any of them (design-plan.md §15.6).
+    if (answer.voiceNote) {
+      paragraphs.push(REPORT_VOICE_NOTE_NOTE);
+    }
+  }
+
+  return paragraphs;
 }
 
 function buildDescriptionParagraphs(report: ReportData): string[] {
   const text = report.freeTextDescription?.trim();
-  return [text ? report.freeTextDescription : '(No description provided.)'];
+  const paragraphs = [text ? report.freeTextDescription : '(No description provided.)'];
+  if (report.freeTextVoiceNote) {
+    paragraphs.push(REPORT_VOICE_NOTE_NOTE);
+  }
+  return paragraphs;
 }
 
 function buildHistoryParagraphs(report: ReportData): string[] {

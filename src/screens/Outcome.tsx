@@ -1,40 +1,66 @@
 /**
  * The outcome screen (/outcome) — one screen, two states, chosen by
- * `disposition(entryPath, redFlagAnswers)`:
+ * `disposition(entryPath, categoryAnswers)`:
  *
- *  - escalate: leads with a single instruction to call, the number as the
- *    largest interactive element on the screen, the emergency call control
- *    (the only other place `EmergencyCall` — and red — appears, besides the
- *    triage flow).
+ *  - escalate: leads with a single instruction to call. Which number is
+ *    primary now further depends on `getEscalationTier` (held-build-brief.md
+ *    placeholder_content, "Escalation tier"):
+ *      - emergency tier: 999 is primary (EMERGENCY_TIER_CONTACT below), the
+ *        maternity/clinic triage contact moves below the fold as the quiet
+ *        secondary route.
+ *      - triage tier: exactly today's behaviour — `getTriageContact()` is
+ *        primary, 999 is the quiet secondary route.
+ *    Only the number and framing change between tiers, nothing else (the
+ *    brief's words) — same screen, same layout, same copy elsewhere.
  *  - routine: states what was sent, to which clinic, when, and sets an
  *    honest expectation for a response based on the clinic's actual hours,
  *    never implying someone is reading it if the clinic is closed.
  *
- * Both states offer the same report download and carry the same triage
- * number from `getTriageContact`, and a report has already gone to the
- * clinic in the background in both cases (rule 7) — this screen never makes
- * her wait for that.
+ * Both states offer the same report download, and a report has already gone
+ * to the clinic in the background in both cases (rule 4e) — this screen
+ * never makes her wait for that.
  */
 
 import { useEffect, useState, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DownloadSimple, PhoneCall } from '@phosphor-icons/react';
 import { useAppState } from '../context/AppStateContext';
-import { BLEEDING_EMERGENCY_NOTE, patientFixture } from '../data/clinicalContent';
+import {
+  BLEEDING_CATEGORY_ID,
+  BLEEDING_EMERGENCY_NOTE,
+  EMERGENCY_ADD_MORE_LABEL,
+  patientFixture,
+} from '../data/clinicalContent';
 import { disposition } from '../logic/disposition';
+import { getEscalationTier } from '../logic/escalationTier';
 import { getTriageContact } from '../logic/triageContact';
 import { downloadReportPdf } from '../logic/reportPdf';
 import { EmergencyCall } from '../components/EmergencyCall';
 import { assembleReportData, formatClock, isClinicOpenAt } from './reportAssembly';
-import type { RedFlagAnswer, TriageContact } from '../types';
+import type { CategoryAnswer, TriageContact, VoiceNote } from '../types';
 
 interface OutcomeSnapshot {
   entryPath: 'alert' | 'adhoc';
-  redFlagAnswers: RedFlagAnswer[];
+  categoryAnswers: CategoryAnswer[];
   triageDescription: string;
+  triageVoiceNote: VoiceNote | null;
+  hardStopEndedEarly: boolean;
 }
 
-function bleedingSecondaryNote(answers: RedFlagAnswer[]): string | undefined {
-  const flagged = answers.some((a) => a.questionId === 'bleeding-fluid' && a.answer === 'yes');
+/** The emergency tier's primary contact — 999, framed as a call, never
+ * "attend" and never "A&E" (rules 4b/4d). This is the one place in the
+ * product a `TriageContact` is built by hand rather than resolved by
+ * `getTriageContact()`, which never returns 999 by design (see that
+ * function's header comment). */
+const EMERGENCY_TIER_CONTACT: TriageContact = {
+  label: 'emergency services',
+  number: '999',
+  reason: 'Call 999 now.',
+  kind: 'emergency',
+};
+
+function bleedingSecondaryNote(answers: CategoryAnswer[]): string | undefined {
+  const flagged = answers.some((a) => a.categoryId === BLEEDING_CATEGORY_ID && a.gateAnswer === 'yes');
   return flagged ? BLEEDING_EMERGENCY_NOTE : undefined;
 }
 
@@ -48,14 +74,14 @@ export default function Outcome(): ReactElement {
     entryPath,
     setEntryPath,
     setAlertActive,
-    redFlagAnswers,
+    categoryAnswers,
     triageDescription,
-    setRedFlagAnswers,
-    setTriageDescription,
+    triageVoiceNote,
     onboardingAnswers,
     activityVariant,
     reportSubmission,
   } = useAppState();
+  const navigate = useNavigate();
 
   // What this outcome is about, captured once on arrival. entryPath and
   // alertActive are cleared right below so a fresh Check-in press is
@@ -63,8 +89,10 @@ export default function Outcome(): ReactElement {
   // still needs the values that produced it for as long as she's on it.
   const [snapshot] = useState<OutcomeSnapshot>(() => ({
     entryPath: entryPath ?? 'adhoc',
-    redFlagAnswers,
+    categoryAnswers,
     triageDescription,
+    triageVoiceNote,
+    hardStopEndedEarly: reportSubmission.hardStopEndedEarly,
   }));
 
   useEffect(() => {
@@ -78,20 +106,8 @@ export default function Outcome(): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Her answers and description stay available for the report download for
-  // as long as she's looking at this screen, and are cleared the moment she
-  // leaves it — a fresh check-in should never inherit a previous one's
-  // answers.
-  useEffect(
-    () => () => {
-      setRedFlagAnswers([]);
-      setTriageDescription('');
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const result = disposition(snapshot.entryPath, snapshot.redFlagAnswers);
+  const result = disposition(snapshot.entryPath, snapshot.categoryAnswers);
+  const tier = result === 'escalate' ? getEscalationTier(snapshot.categoryAnswers) : null;
   const contact = getTriageContact(now(), patientFixture);
   const clinic = patientFixture.clinic;
   const clinicOpen = isClinicOpenAt(now(), clinic.hours);
@@ -102,23 +118,56 @@ export default function Outcome(): ReactElement {
     gestationWeeks: patientFixture.gestationWeeks,
     entryPath: snapshot.entryPath,
     submittedAt,
-    redFlagAnswers: snapshot.redFlagAnswers,
+    categoryAnswers: snapshot.categoryAnswers,
+    hardStopEndedEarly: snapshot.hardStopEndedEarly,
     freeTextDescription: snapshot.triageDescription,
+    freeTextVoiceNote: snapshot.triageVoiceNote,
     onboardingHistory: onboardingAnswers,
     activityVariant,
   });
 
   const handleDownload = (): void => downloadReportPdf(report);
 
+  const handleAddMore = (): void => {
+    navigate('/triage', { state: { continueAfterHardStop: true } });
+  };
+
+  // NOTE ON WHAT USED TO BE HERE: this screen previously cleared
+  // categoryAnswers/triageDescription/triageVoiceNote (and revoked their
+  // voice-note URLs) in a mount-effect cleanup, on the theory that "a fresh
+  // check-in should never inherit a previous one's answers". That cleanup
+  // fires on unmount — including the extra, synthetic mount+cleanup+remount
+  // React's StrictMode performs immediately after every component's FIRST
+  // real mount in development, specifically to surface exactly this kind of
+  // bug. Because that synthetic cleanup runs before she has done anything
+  // at all, it was silently clearing the live context state — invisibly,
+  // because this screen only ever renders from the `snapshot` captured at
+  // mount, never from the live values — until "Add more detail for your
+  // clinic" needed those live values to still be there after navigating
+  // back to /triage, which is what surfaced it. TriageFlow.tsx's own
+  // fresh-entry reset (in its mount effect) already guards against
+  // inheriting a previous submission's answers, unconditionally, so this
+  // screen no longer needs to do it too — see that effect for where the
+  // voice-note revocation now happens instead.
+
   return (
     <div className="relative mx-auto min-h-screen w-full max-w-[420px] px-6">
       <div className="dock-safe pt-8">
         {result === 'escalate' ? (
-          <EscalateOutcome
-            contact={contact}
-            secondaryNote={bleedingSecondaryNote(snapshot.redFlagAnswers)}
-            onDownload={handleDownload}
-          />
+          tier === 'emergency' ? (
+            <EscalateOutcome
+              contact={EMERGENCY_TIER_CONTACT}
+              secondaryContact={contact}
+              onDownload={handleDownload}
+              onAddMore={handleAddMore}
+            />
+          ) : (
+            <EscalateOutcome
+              contact={contact}
+              secondaryNote={bleedingSecondaryNote(snapshot.categoryAnswers)}
+              onDownload={handleDownload}
+            />
+          )
         ) : (
           <RoutineOutcome
             contact={contact}
@@ -142,14 +191,23 @@ export default function Outcome(): ReactElement {
 
 interface EscalateOutcomeProps {
   contact: TriageContact;
-  secondaryNote: string | undefined;
+  secondaryNote?: string;
+  secondaryContact?: TriageContact;
   onDownload: () => void;
+  /** Only present for the emergency tier — the quiet, non-blocking way back
+   * into the conversation (design brief: "she can keep adding detail
+   * afterward if she wants"). Never gates the number above it, and never
+   * changes it: no-downgrade means nothing she adds can move her out of the
+   * emergency tier. */
+  onAddMore?: () => void;
 }
 
 function EscalateOutcome({
   contact,
   secondaryNote,
+  secondaryContact,
   onDownload,
+  onAddMore,
 }: EscalateOutcomeProps): ReactElement {
   return (
     <div className="flex flex-col gap-8">
@@ -158,7 +216,12 @@ function EscalateOutcome({
         <p className="text-body text-text-muted">{contact.reason}</p>
       </div>
 
-      <EmergencyCall contact={contact} prominence="lead" secondaryNote={secondaryNote} />
+      <EmergencyCall
+        contact={contact}
+        prominence="lead"
+        secondaryNote={secondaryNote}
+        secondaryContact={secondaryContact}
+      />
 
       <button
         type="button"
@@ -172,6 +235,16 @@ function EscalateOutcome({
       <p className="text-caption text-text-muted">
         Your clinic has also received a copy of this report.
       </p>
+
+      {onAddMore && (
+        <button
+          type="button"
+          onClick={onAddMore}
+          className="tap self-start px-2 text-caption text-accent"
+        >
+          {EMERGENCY_ADD_MORE_LABEL}
+        </button>
+      )}
     </div>
   );
 }
@@ -247,7 +320,7 @@ function RoutineOutcome({
       </button>
 
       <p className="text-body text-text">
-        If anything changes while you wait, check in again or call {contact.label}.
+        If anything changes while you wait, speak to Kindred again or call {contact.label}.
       </p>
 
       <a

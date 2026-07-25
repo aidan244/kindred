@@ -79,6 +79,43 @@
   --lamp-3: rgb(var(--accent-rgb) / 0.2);
   --lamp-4: rgb(var(--accent-rgb) / 0.36);
   --lamp-5: rgb(var(--accent-rgb) / 0.62);
+
+  /* Ambient background wash — design-plan.md §13. --------------------------
+   * A ramp SEPARATE from --lamp-* on purpose: --lamp-* is bounded artwork
+   * inside the two data visualisations and may be strong; --wash-* is the
+   * ground the entire product stands on and is bounded by a contrast budget
+   * (§13.4). The two must be able to move independently.
+   *
+   * --wash-rgb and the five alphas are set per theme below, because the wash
+   * inverts between themes: at night it is EMITTED LIGHT (the accent,
+   * lightening a dark room); in day it is DAYLIGHT ON PAPER (a warm white,
+   * still lightening). It never darkens the page in either theme — a
+   * full-bleed darkening wash reads as a stain or a dimmed screen, which is
+   * the opposite of "induce calm". This is a deliberate departure from
+   * --lamp-*, which does darken in day because it is bounded artwork.
+   *
+   * Not mapped into @theme. Consumed only as var(--wash-N) inside bespoke
+   * gradient CSS, exactly like --lamp-*. Do NOT add --color-wash-*.
+   *
+   * --wash-0 is currently unused by either iteration. It is defined anyway as
+   * the reserve step below --wash-1, so that "make it fainter" has a value
+   * already on the ramp instead of someone inventing one inline.
+   */
+  --wash-0: rgb(var(--wash-rgb) / var(--wash-a0));
+  --wash-1: rgb(var(--wash-rgb) / var(--wash-a1));
+  --wash-2: rgb(var(--wash-rgb) / var(--wash-a2));
+  --wash-3: rgb(var(--wash-rgb) / var(--wash-a3));
+  --wash-4: rgb(var(--wash-rgb) / var(--wash-a4));
+
+  /* Wash drift periods. Prime and pairwise coprime: the composite of the
+   * three takes 53 x 67 x 89 = 316,039s (~88 hours) to repeat, so the field
+   * never visibly loops. Same law as §7.3's 23/31/41. */
+  --dur-wash-a: 53s;
+  --dur-wash-b: 67s;
+  --dur-wash-c: 89s;
+
+  /* The silent pause between conversational messages (§14.5). */
+  --dur-beat: 700ms;
 }
 
 /* --------------------------------------------------------------------------
@@ -110,6 +147,14 @@
 
   /* Elevation is light; this shadow exists only for the one docked control. */
   --elev-float: 0 10px 34px -10px rgb(0 0 0 / 0.66);
+
+  /* Ambient background wash (§13.2) — the lamp, emitting into the room. */
+  --wash-rgb: 232 180 120; /* = --accent-rgb */
+  --wash-a0: 0.02;
+  --wash-a1: 0.04;
+  --wash-a2: 0.1;
+  --wash-a3: 0.14;
+  --wash-a4: 0.22;
 }
 
 /* --------------------------------------------------------------------------
@@ -139,4 +184,16 @@
   --scrim: rgb(58 40 30 / 0.42);
 
   --elev-float: 0 10px 30px -12px rgb(90 60 35 / 0.28);
+
+  /* Ambient background wash (§13.2) — warm white, not bronze: in daylight,
+   * added light does not darken paper. Alphas run higher than night — see
+   * design-plan.md §13.2 for the full reasoning. --wash-a4 sits at the
+   * elevation ceiling (§13.2's day sanity check), not a taste boundary —
+   * do not raise it. */
+  --wash-rgb: 255 244 228;
+  --wash-a0: 0.03;
+  --wash-a1: 0.06;
+  --wash-a2: 0.14;
+  --wash-a3: 0.2;
+  --wash-a4: 0.26;
 }

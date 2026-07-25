@@ -4,8 +4,14 @@ import {
   buildReportSections,
   type ReportSections,
 } from '../logic/reportPdf';
-import { redFlagQuestions, REPORT_DISCLAIMER } from '../data/clinicalContent';
-import type { ActivitySample, ReportData } from '../types';
+import {
+  BLEEDING_HOW_MUCH_FOLLOWUP_ID,
+  COLLAPSE_CATEGORY_ID,
+  redFlagCategories,
+  REPORT_DISCLAIMER,
+  REPORT_VOICE_NOTE_NOTE,
+} from '../data/clinicalContent';
+import type { ActivitySample, CategoryAnswer, ReportData, VoiceNote } from '../types';
 
 const submittedAt = new Date(2026, 6, 25, 14, 32, 0, 0);
 
@@ -21,18 +27,57 @@ function buildRecentActivity(): ActivitySample[] {
   return samples;
 }
 
+// Every category gated yes, with a mix of follow-up types answered, so the
+// report exercises text/number/select/multiselect/yesno formatting.
+const fullCategoryAnswers: CategoryAnswer[] = redFlagCategories.map((category, index) => {
+  if (category.hardStop) {
+    return {
+      categoryId: category.id,
+      gateAnswer: 'no',
+      additionalGateAnswers: category.additionalGateQuestions?.map(() => 'no'),
+      followUpAnswers: [],
+    };
+  }
+  const followUpAnswers = category.followUps.map((followUp) => {
+    switch (followUp.type) {
+      case 'yesno':
+        return { followUpId: followUp.id, value: { type: 'yesno' as const, value: 'yes' as const } };
+      case 'text':
+        return { followUpId: followUp.id, value: { type: 'text' as const, value: 'Some detail text' } };
+      case 'number':
+        return { followUpId: followUp.id, value: { type: 'number' as const, value: 4 } };
+      case 'select':
+        return {
+          followUpId: followUp.id,
+          value: { type: 'select' as const, value: followUp.options?.[0]?.value ?? '' },
+        };
+      case 'multiselect':
+        return {
+          followUpId: followUp.id,
+          value: { type: 'multiselect' as const, value: followUp.options ? [followUp.options[0].value] : [] },
+        };
+      default:
+        throw new Error(`Unhandled follow-up type: ${followUp.type}`);
+    }
+  });
+  return {
+    categoryId: category.id,
+    gateAnswer: 'yes',
+    followUpAnswers,
+    detail: index === 0 ? 'Small amount, pinkish' : undefined,
+  };
+});
+
 const fullReport: ReportData = {
   patientName: 'Amara Whitfield',
   gestationWeeks: 34,
   entryPath: 'alert',
   submittedAt,
-  redFlagAnswers: redFlagQuestions.map((question, index) => ({
-    questionId: question.id,
-    answer: index === 0 ? 'no' : 'yes',
-    detail: index === 1 ? 'Small amount, pinkish' : undefined,
-  })),
+  categoryAnswers: fullCategoryAnswers,
+  hardStopEndedEarly: false,
   freeTextDescription:
     'I noticed less movement than usual this afternoon and felt a bit dizzy.',
+  freeTextVoiceNote: null,
   onboardingHistory: {
     weeksPregnant: 12,
     extraMonitoring: {
@@ -54,8 +99,10 @@ const minimalReport: ReportData = {
   gestationWeeks: 28,
   entryPath: null,
   submittedAt,
-  redFlagAnswers: [],
+  categoryAnswers: [],
+  hardStopEndedEarly: false,
   freeTextDescription: '',
+  freeTextVoiceNote: null,
   onboardingHistory: {
     weeksPregnant: null,
     extraMonitoring: { answer: null, detail: '' },
@@ -92,23 +139,60 @@ describe('buildReportSections', () => {
     expect(sections.history.paragraphs[0]).toContain('not recorded');
   });
 
-  it('joins every red-flag question with her answer, by questionId', () => {
+  it('joins every category with its gate answer, by categoryId, in schema order', () => {
     const sections = buildReportSections(fullReport);
     const text = sections.redFlags.paragraphs.join('\n');
-    for (const question of redFlagQuestions) {
-      expect(text).toContain(question.question);
+    for (const category of redFlagCategories) {
+      expect(text).toContain(category.gateQuestion);
     }
-    // The movement question (index 0) was answered "no".
-    expect(sections.redFlags.paragraphs[0]).toContain('No');
-    // Whichever question is at index 1 carried a detail string.
-    expect(sections.redFlags.paragraphs[1]).toContain('Small amount, pinkish');
   });
 
-  it('renders an unanswered red-flag question as "not answered"', () => {
+  it('renders every answered follow-up with its formatted value', () => {
+    const sections = buildReportSections(fullReport);
+    const text = sections.redFlags.paragraphs.join('\n');
+    for (const category of redFlagCategories.filter((c) => !c.hardStop)) {
+      for (const followUp of category.followUps) {
+        expect(text).toContain(followUp.prompt);
+      }
+    }
+  });
+
+  it('renders a select follow-up by its option LABEL, not its raw value', () => {
+    const sections = buildReportSections(fullReport);
+    const text = sections.redFlags.paragraphs.join('\n');
+    // fullCategoryAnswers picks options[0] for every select follow-up —
+    // Bleeding's "How much?" first option is 'spotting' / 'Spotting'.
+    expect(text).toContain(`How much? - Spotting`);
+    expect(text).not.toContain('- spotting');
+  });
+
+  it('renders an unanswered category as "not asked" when the submission was not a hard stop', () => {
     const sections = buildReportSections(minimalReport);
     for (const paragraph of sections.redFlags.paragraphs) {
-      expect(paragraph).toContain('not answered');
+      expect(paragraph).toContain('not asked');
+      expect(paragraph).not.toContain('ended early');
     }
+  });
+
+  it('renders an unanswered category honestly as "ended early" when hardStopEndedEarly is true', () => {
+    const collapseIndex = redFlagCategories.findIndex((c) => c.id === COLLAPSE_CATEGORY_ID);
+    const report: ReportData = {
+      ...fullReport,
+      hardStopEndedEarly: true,
+      categoryAnswers: [
+        { categoryId: COLLAPSE_CATEGORY_ID, gateAnswer: 'yes', followUpAnswers: [] },
+      ],
+    };
+    const sections = buildReportSections(report);
+    const text = sections.redFlags.paragraphs.join('\n');
+    // The categories after Collapse in schema order were never reached.
+    const afterCollapse = redFlagCategories.slice(collapseIndex + 1);
+    expect(afterCollapse.length).toBeGreaterThan(0);
+    for (const category of afterCollapse) {
+      expect(text).toContain(`${category.gateQuestion} - not asked — check-in ended early to show emergency contact`);
+    }
+    // Never claims a category that was never reached was "answered no".
+    expect(text).not.toMatch(/not asked - No/);
   });
 
   it('includes the free-text description verbatim', () => {
@@ -116,6 +200,39 @@ describe('buildReportSections', () => {
     expect(sections.description.paragraphs).toContain(
       fullReport.freeTextDescription
     );
+  });
+
+  it('never mentions a voice note when none was recorded', () => {
+    const sections = buildReportSections(fullReport);
+    const text = sections.redFlags.paragraphs.join('\n') + sections.description.paragraphs.join('\n');
+    expect(text).not.toContain(REPORT_VOICE_NOTE_NOTE);
+  });
+
+  it('appends REPORT_VOICE_NOTE_NOTE as its own paragraph after a category with a voice note', () => {
+    const voiceNote: VoiceNote = { url: 'blob:demo', durationSeconds: 12, mimeType: 'audio/webm' };
+    const report: ReportData = {
+      ...fullReport,
+      categoryAnswers: fullReport.categoryAnswers.map((answer, index) =>
+        index === 1 ? { ...answer, voiceNote } : answer
+      ),
+    };
+    const sections = buildReportSections(report);
+    const text = sections.redFlags.paragraphs.join('\n');
+    expect(text).toContain(REPORT_VOICE_NOTE_NOTE);
+    // Never contains the forbidden words even with a voice note attached.
+    const fullText = JSON.stringify(sections);
+    expect(fullText).not.toContain('A&E');
+    expect(fullText).not.toContain('detected');
+  });
+
+  it('appends REPORT_VOICE_NOTE_NOTE after the description when a closing voice note is attached', () => {
+    const voiceNote: VoiceNote = { url: 'data:audio/wav;base64,AAAA', durationSeconds: 12, mimeType: 'audio/wav' };
+    const report: ReportData = { ...fullReport, freeTextVoiceNote: voiceNote };
+    const sections = buildReportSections(report);
+    expect(sections.description.paragraphs).toEqual([
+      fullReport.freeTextDescription,
+      REPORT_VOICE_NOTE_NOTE,
+    ]);
   });
 
   it('joins onboarding history option labels, not raw HistoryFlag values', () => {
@@ -161,6 +278,13 @@ describe('buildReportSections', () => {
     const sections = buildReportSections(fullReport);
     expect(sections.entry.paragraphs.join(' ')).not.toContain('detected');
     expect(sections.entry.paragraphs.join(' ').toLowerCase()).toContain('alert');
+  });
+
+  it('never mentions the bleeding-how-much followUpId as a raw string anywhere', () => {
+    // Guards against a lookup-by-id bug silently printing the id instead of
+    // the follow-up's prompt/label.
+    const sections = buildReportSections(fullReport);
+    expect(JSON.stringify(sections)).not.toContain(BLEEDING_HOW_MUCH_FOLLOWUP_ID);
   });
 });
 

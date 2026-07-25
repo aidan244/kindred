@@ -46,7 +46,7 @@ export function AlertFramingBlock({ onCheckIn, onDismiss }: AlertFramingBlockPro
           onClick={onCheckIn}
           className="tap flex h-14 w-full items-center justify-center rounded-pill bg-accent px-6 text-label text-on-accent transition-opacity duration-[var(--dur-press)] active:opacity-[0.82]"
         >
-          Check in
+          Speak to Kindred
         </button>
         <button
           type="button"

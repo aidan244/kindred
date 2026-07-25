@@ -46,6 +46,8 @@ The private clinic is not staffed 24/7, so the number shown must resolve against
   - Heavy bleeding, collapse, or fitting: 999, offered as a distinct secondary route, never as the default.
 Build this as one function, `getTriageContact(now, patient)`, returning a label, a number, and a one-line reason. It shares the same clock as the theme switch. Never show two numbers of equal weight; resolve to one primary and put the rest below the fold.
 
+The exact answers that trigger this emergency tier versus the routine triage-call tier are defined in placeholder_content, sourced against NHS guidance on bleeding and collapse in pregnancy. Treat that mapping as provisional until the medic confirms it, the same way the questions themselves are provisional.
+
 4c. Escalation is triggered by the alert path, or by any positive red flag on the ad hoc path. The entry path can escalate but never de-escalate: an alert-path check-in with no positive red flags still escalates. The red flag answers still do real work in both paths, because they decide whether the primary route is the triage call or 999, and they populate what the clinician sees. Only one combination reaches the routine outcome: ad hoc entry with no positive red flags.
 
 4d. The escalation screen says call, not attend. The app decides the urgency of contact. The clinician on the phone decides attendance. This keeps the disposition with a human, which is the product's answer to Rule 11 software classification, and it stops false-positive alerts filling maternity units.
@@ -123,9 +125,9 @@ On-demand real-time view of the stream, openable at any time from home. The wear
 
 5. Triage flow
 Shared by both entry paths.
-   a. Red flag questionnaire. One question per screen, yes or no, with an optional "add detail" free-text field that expands inline. Progress indicator. Back navigation preserved.
+   a. Red flag questionnaire. Category by category, per placeholder_content: one gate question, then that category's follow-ups only if the gate is yes, mixed input types, not all yes or no. Progress indicator reflects categories, not raw question count. Back navigation preserved. If a hard-stop category fires, interrupt immediately and route to the emergency outcome screen without waiting for remaining categories.
    b. Detail step. A conversational free-text capture where she can describe anything else in her own words. Present it as a chat, but drive it from a scripted, deterministic sequence so it cannot fail on stage. See the tech notes on the optional live model.
-   c. Review. Shows what will be sent to her clinic, in plain language, before she sends it. She can edit any answer.
+   c. Review. Shows what will be sent to her clinic, in plain language, before she sends it. She can edit any answer. Skipped entirely when a hard stop has already routed her to the emergency screen.
    The emergency control is present on every screen of this flow.
 
 6. Outcome
@@ -143,8 +145,6 @@ The report download is available on both states and from both entry paths. It is
 
 Report contents: her name and gestation, the entry path and timestamp, every red flag question with her answer and any detail she added, her free-text description, the history captured at onboarding, and the activity trace for the preceding 24 hours with her personal baseline for comparison. Include a line stating the movement data comes from a consumer wearable and is supporting context, not a clinical measurement.
 
-Report contents: her name and gestation, the entry path and timestamp, every red flag question with her answer and any detail she added, her free-text description, the history captured at onboarding, and the activity trace for the preceding 24 hours with her personal baseline for comparison. Include a line stating the movement data comes from a consumer wearable and is supporting context, not a clinical measurement.
-
 Plus: hidden demo control panel.
 Toggled by a keyboard shortcut and a small unobtrusive affordance. Lets the operator jump to any screen, fire the simulated push notification, reset state, switch the seeded activity data between a quiet pattern and an active pattern, and override the clock. The clock override drives both the day and night theme and the open or closed state of the clinic, so a single control demonstrates the warm night theme and the out-of-hours fallback number at the same time. This exists so the one-minute demo cannot fail. Build it first.
 </screens>
@@ -157,12 +157,56 @@ Onboarding history questions, three for now, structure should accept more:
 2. Has anyone told you this pregnancy needs extra monitoring, or are you under consultant-led care? (yes / no / not sure, with optional detail)
 3. Has anything happened in this or a previous pregnancy that your clinic should know about? (multi-select: bleeding, reduced movement before, previous loss, high blood pressure, diabetes, none of these, plus optional detail)
 
-Red flag questions, five for now, structure should accept more:
-1. Have you felt your baby move in the last two hours?
-2. Have you had any bleeding or fluid loss?
-3. Do you have tummy pain that stays rather than comes and goes?
-4. Do you have a bad headache, changes in your vision, or sudden swelling in your face or hands?
-5. Do you feel unwell in yourself, or have a temperature?
+Red flag questionnaire, sourced from the team medic, structured as six categories. Each category has one gate question and, only when the gate is answered yes, a set of follow-up questions that add detail for the report. This replaces the earlier five-question flat placeholder entirely.
+
+Do not build this as six hardcoded screens with copy-pasted logic. Build one data-driven component driven by an array of category objects shaped like:
+  { id, gateQuestion, gateType: 'yesno', hardStop: boolean, followUps: [{ id, prompt, type: 'yesno' | 'text' | 'number' | 'select' | 'multiselect', options? }] }
+This is what makes the set genuinely editable by the medic later. Editing content means editing this array, never touching flow code.
+
+Rendering rule. Show only the gate question first. A no skips straight to the next category. A yes reveals that category's follow-ups inline before moving on.
+
+No-downgrade rule. Once a gate is answered yes, that category contributes to escalation permanently for this submission. No follow-up answer softens or reverses it. This matters most for Movement: "did movement return after rest or food" is captured for the clinician's benefit only and must never read as a reason to downgrade to routine. Apply this to every category, not only Movement.
+
+Hard-stop rule. Collapse, seizure, trauma is a hard stop, not an ordinary red flag. The instant either of its two questions is answered yes, wherever it falls in the sequence, jump immediately to the emergency-tier outcome screen. Do not wait for the remaining categories. She can keep adding detail afterward if she wants, but the phone number is never gated behind finishing the form.
+
+Escalation tier. When the overall disposition is escalate, it resolves further to one of two tiers, which changes only the phone number and framing shown, nothing else:
+  - Emergency tier, 999 primary: the collapse/seizure/trauma gate is yes, or Bleeding is yes and either "how much" is heavy or "any pain or dizziness" is yes.
+  - Triage tier, maternity triage primary via getTriageContact: every other escalate case.
+This mapping is drawn from NHS patient-safety guidance on bleeding and collapse in pregnancy, it is not invented. The thresholds for Pain, Vomiting, and Fluid are not defined this precisely yet and default to triage tier until the medic sets them.
+
+Data note. "How much" under Bleeding is written as open text in the source list, but the emergency-tier rule needs it structured. Implement it as a select, for example spotting, like a period, heavier than a period, soaking a pad within an hour, so "heavy" is a value the app can check rather than free text it would have to parse.
+
+Cross-category overlap. Pain's "associated symptoms" follow-up and Vomiting's follow-up both re-ask about bleeding, fluid, or abdominal pain that may already be captured elsewhere this session. Do not build cross-category inference or scoring, that is clinical reasoning the app should not do. The only requirement: if a fact was already captured this session, show what was recorded and let her confirm or add to it rather than presenting a blank prompt again. Everything still flows into the report untouched.
+
+The six categories, verbatim from the medic:
+
+Bleeding
+  Gate: Are you bleeding?
+  Follow-ups: How much? / How long? / Any clots or tissue? / Any pain or dizziness?
+
+Fluid
+  Gate: Any gush or leaking fluid?
+  Follow-ups: When did it start? / Clear, pink, or blood-stained? / Still leaking? / Any smell or fever?
+
+Movement
+  Gate: Has the baby moved less, stopped, or changed from normal?
+  Follow-ups: When was the last movement? / Did movement return after rest or food?
+
+Vomiting
+  Gate: Have you vomited in the past 24 hours?
+  Follow-ups: How many times? / Can you keep fluids down? / Any blood or green/brown vomit? / Any abdominal pain, fever, dark urine, dizziness, or weight loss?
+
+Pain
+  Gate: Do you have pain?
+  Follow-ups: Where is it? / When did it start? / Is it constant or does it come and go? / Severity out of 10? / Any bleeding, fluid, contractions, or urinary symptoms?
+
+Collapse, seizure, trauma, hard stop, emergency tier:
+  Any seizure, fainting, collapse, or head injury?
+  Any abdominal trauma or fall?
+
+Open items, not yet resolved, do not silently fill these in:
+  - This list has no source citation or version yet. It cannot satisfy the "sourced, version-pinned" requirement until the medic names the guideline or protocol it is drawn from.
+  - There is no headache, visual disturbance, or swelling category, the standard pre-eclampsia screen present in most comparable red flag sets. Confirm with the medic whether this is a deliberate omission or a gap to fill before this becomes canonical.
 
 Seed data: fourteen days of binary time-series activity at five-minute resolution, generated with a plausible circadian pattern including a quiet overnight period. Provide two variants for the demo toggle.
 </placeholder_content>
@@ -180,6 +224,8 @@ Structure the code so the sensor is behind a single interface, something like a 
 
 Keep the disposition logic in one pure, tested function taking the entry path and the red flag answers and returning escalate or routine. Cover these cases in tests: alert path with no red flags escalates; ad hoc with one red flag escalates; ad hoc with none is routine; the function never returns routine for an alert path entry. Keep `getTriageContact` separate and pure too, taking a clock and the patient's clinic hours and booked unit, so the out-of-hours behaviour is testable without waiting until 3am.
 
+Add a second pure function, `getEscalationTier`, taking the red flag answers and returning emergency or triage per the rule in placeholder_content. Test it directly: collapse or trauma yes returns emergency regardless of every other answer; heavy bleeding or bleeding with pain or dizziness returns emergency; every other escalate case returns triage. Test the hard stop as a UI behaviour too, not just a function result: answering a hard-stop category yes mid-questionnaire must navigate straight to the emergency outcome without requiring the remaining categories to be answered first.
+
 Keep components small and typed. No `any`. Write a short README covering how to run it, the architecture, the sensor interface boundary, and a clearly headed section on the clinical safety rules and why the copy is written the way it is.
 </tech_stack>
 
@@ -188,7 +234,7 @@ Work in this order and do not skip the first two steps.
 
 1. Build the demo control panel and the routing shell first, so every subsequent screen is immediately reachable and demoable.
 2. Produce the design token system and a one-paragraph plan for the signature live view before writing any screen code. Check it against the list of AI-design defaults above. If any part of it is one of those defaults, revise it and state what you changed and why.
-3. Build screens in this order: live view, home default, home alert, triage flow, report sent, onboarding. The live view first, because it is the signature and it will set the visual language for everything else.
+3. Build screens in this order: live view, home default, home alert, triage flow, outcome, onboarding. The live view first, because it is the signature and it will set the visual language for everything else.
 4. After each screen, re-read the clinical safety rules and check the screen against them. Report any conflict rather than silently resolving it.
 5. Take screenshots as you go if the environment supports it, and critique your own work against the design direction.
 
@@ -201,6 +247,8 @@ The build is done when all of the following hold.
 - `npm install && npm run dev` produces a running app with no further setup.
 - All six screens plus the demo panel are reachable, and the full path from push notification to outcome can be walked in under sixty seconds without touching the URL bar.
 - The disposition function passes its four routing cases, and an alert-path entry never reaches the routine outcome.
+- Answering a hard-stop category yes at any point in the questionnaire interrupts immediately and reaches the emergency outcome without requiring the remaining categories.
+- `getEscalationTier` correctly separates emergency from triage per its test cases, and no follow-up answer ever downgrades a category that already gated yes.
 - The escalation screen resolves to one primary number against the clock, showing the 24/7 maternity unit when the clinic is closed, with a plain reason.
 - The word A&E does not appear as an escalation instruction anywhere, and the escalation screen says call rather than attend.
 - A report reaches the private clinic on every outcome, including escalations.

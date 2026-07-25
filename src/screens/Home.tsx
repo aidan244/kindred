@@ -1,6 +1,15 @@
 /**
- * Home — design-plan.md §8 and the task's screen spec. The resting state
- * and entry point for the patient-initiated path.
+ * Home — design-plan.md §8 and the founder's home-screen sketch. The resting
+ * state and entry point for the patient-initiated path.
+ *
+ * Composition, top to bottom: a warm greeting ("Welcome back, {name}.") →
+ * the Kindred avatar, a calm hand-drawn presence sitting under it → the 24h
+ * ember band, this product's activity graph → a quiet "Worried?" prompt
+ * pinned directly above the docked "Speak to Kindred" control (the renamed
+ * check-in CTA — see CheckInControl.tsx). The trailing prompt block carries
+ * `mt-auto` so it settles at the bottom of the viewport regardless of how
+ * tall the content above it is, the same way CheckInControl always docks in
+ * the same place.
  *
  * Safety rule: this screen shows the shape of the last 24h of data and
  * STOPS. No summary, no score, no interpretation in words — just the ember
@@ -8,8 +17,8 @@
  * reachable, same position as everywhere else) or open the live view.
  *
  * When `alertActive` is true (entered from the simulated push notification)
- * the same layout gains a framing block at the top. Nothing else changes —
- * the check-in control stays in its usual place.
+ * the same layout gains a framing block, rendered just below the greeting.
+ * Nothing else changes — the check-in control stays in its usual place.
  */
 
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
@@ -17,8 +26,12 @@ import { useNavigate } from 'react-router-dom';
 import { AlertFramingBlock } from '../components/AlertFramingBlock';
 import { CheckInControl } from '../components/CheckInControl';
 import { EmberBand } from '../components/EmberBand';
+import { KindredAvatar } from '../components/KindredAvatar';
 import { useAppState } from '../context/AppStateContext';
+import { patientFixture } from '../data/clinicalContent';
 import { getMovementStream } from '../sensors/MovementStream';
+
+const FIRST_NAME = patientFixture.name.split(' ')[0];
 
 // How often the "synced ... ago" line quietly recomputes. Not an animation —
 // a plain metadata string, updated the way any ordinary app keeps a
@@ -85,23 +98,41 @@ export default function Home(): ReactElement {
   };
 
   return (
-    <div className="relative flex min-h-screen justify-center">
-      <div className="w-full max-w-[var(--content-max)] px-6">
-        <div className="flex flex-col pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe">
-          {alertActive && (
-            <div className="mb-8">
-              <AlertFramingBlock onCheckIn={handleAlertCheckIn} onDismiss={handleDismiss} />
-            </div>
-          )}
+    <div className="relative flex min-h-[calc(100vh-96px)] items-start justify-center">
+      {/* min-h-[calc(100vh-96px)], here and below, rather than min-h-screen:
+          Layout's <main> (not owned by this screen) wraps every route in
+          `min-h-screen pb-24` — its own 96px of bottom padding. Matching
+          that here keeps this column's height, plus that padding, at
+          exactly one viewport, so the trailing "Worried?" prompt still
+          settles right above the docked control via `mt-auto` without the
+          page needing to scroll. `items-start` stops the default flex
+          stretch from overriding the inner column's min-height with this
+          row's own. */}
+      <div className="flex min-h-[calc(100vh-96px)] w-full max-w-[var(--content-max)] flex-col px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe">
+        <header>
+          <h1 className="text-display text-text">Welcome back, {FIRST_NAME}.</h1>
+        </header>
 
-          <header>
-            <h1 className="text-title text-text">Last 24 hours</h1>
-            <p className="mt-3 text-caption text-text-muted">{syncedCopy}</p>
-          </header>
-
+        {alertActive && (
           <div className="mt-8">
+            <AlertFramingBlock onCheckIn={handleAlertCheckIn} onDismiss={handleDismiss} />
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-center">
+          <KindredAvatar />
+        </div>
+
+        <div className="mt-8">
+          <p className="text-caption text-text-muted">Last 24 hours</p>
+          <p className="mt-1 text-caption text-text-muted">{syncedCopy}</p>
+          <div className="mt-3">
             <EmberBand variant={activityVariant} onOpenLiveView={() => navigate('/live')} />
           </div>
+        </div>
+
+        <div className="mt-auto pt-6 text-center">
+          <p className="text-caption text-text-muted">Worried?</p>
         </div>
       </div>
 

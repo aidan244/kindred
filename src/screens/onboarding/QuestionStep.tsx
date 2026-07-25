@@ -1,5 +1,4 @@
 import type { ReactElement } from 'react';
-import { Check } from '@phosphor-icons/react';
 import type {
   MultiSelectOnboardingQuestion,
   NumericOnboardingQuestion,
@@ -247,6 +246,11 @@ function OptionPill({
   label: string;
   onSelect: () => void;
 }): ReactElement {
+  // design-plan.md §6.1 (amended): `Check` no longer appears anywhere in the
+  // product. Selection here is the border/fill treatment alone — already
+  // the §9.4-mandated "selected" state (2px border-accent + bg-surface-hi)
+  // — so removing the tick glyph loses no information; the input's own
+  // native checked state still carries it for assistive tech.
   return (
     <label
       htmlFor={id}
@@ -262,7 +266,6 @@ function OptionPill({
         onChange={onSelect}
         className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-pill opacity-0"
       />
-      {checked ? <Check size={18} weight="light" aria-hidden="true" className="text-accent" /> : null}
       <span className="pointer-events-none">{label}</span>
     </label>
   );

@@ -1,35 +1,40 @@
 /**
- * Clinical routing rule for the red-flag triage questionnaire.
+ * Clinical routing rule for the red-flag triage questionnaire (held-build-
+ * build-brief.md rule 4c, amended for the six-category schema).
  *
  * Rule (exactly):
  *  - entryPath 'alert' (she arrived via a sensor push notification) ALWAYS
- *    escalates, regardless of her answers — including zero positive flags.
- *    The entry path can only push towards escalation, never away from it.
- *  - entryPath 'adhoc' escalates if at least one answer is a positive red
- *    flag.
- *  - entryPath 'adhoc' with zero positive flags is the ONLY combination that
- *    returns 'routine'.
+ *    escalates, regardless of her answers — including zero categories
+ *    answered yes. The entry path can only push towards escalation, never
+ *    away from it.
+ *  - entryPath 'adhoc' escalates if at least one category's gate was
+ *    answered yes.
+ *  - entryPath 'adhoc' with every gate answered no is the ONLY combination
+ *    that returns 'routine'.
  *
- * A "positive flag" is answer-dependent per question: each RedFlagQuestion
- * carries a `flagWhen: 'yes' | 'no'` saying which answer counts as positive
- * for that question (question 1, movement, flags on "no"; the others flag
- * on "yes"). We resolve this by joining the given answers to the question
- * definitions in src/data/clinicalContent.ts by `questionId`.
+ * "Any gate yes" reads `gateAnswer` and, for the one category that has them
+ * (Collapse/seizure/trauma — src/data/clinicalContent.ts modelling decision
+ * (a)), `additionalGateAnswers` too. It never reads a follow-up answer: the
+ * no-downgrade rule says a follow-up can add detail for the clinician but
+ * can never soften or reverse a category that already gated yes, and the
+ * simplest way to make that true "by construction" rather than by
+ * discipline is for this function to never look at follow-ups at all.
  *
  * This function is pure and deterministic: no clock, no I/O, no mutation.
  */
 
-import type { RedFlagAnswer } from '../types';
-import { redFlagQuestions } from '../data/clinicalContent';
+import type { CategoryAnswer } from '../types';
 
-// questionId -> which answer ('yes' | 'no') is the positive flag for it.
-const flagWhenByQuestionId = new Map(
-  redFlagQuestions.map((q) => [q.id, q.flagWhen])
-);
+function categoryGatedYes(answer: CategoryAnswer): boolean {
+  if (answer.gateAnswer === 'yes') {
+    return true;
+  }
+  return answer.additionalGateAnswers?.some((value) => value === 'yes') ?? false;
+}
 
 export function disposition(
   entryPath: 'alert' | 'adhoc',
-  answers: RedFlagAnswer[]
+  answers: CategoryAnswer[]
 ): 'escalate' | 'routine' {
   // The alert entry path can escalate but never de-escalate: it always wins,
   // even with no answers at all.
@@ -37,15 +42,5 @@ export function disposition(
     return 'escalate';
   }
 
-  const hasPositiveFlag = answers.some((answer) => {
-    const flagWhen = flagWhenByQuestionId.get(answer.questionId);
-    // An answer to a question we don't recognise must never crash the
-    // function — just ignore it rather than treating it as a flag.
-    if (flagWhen === undefined) {
-      return false;
-    }
-    return answer.answer === flagWhen;
-  });
-
-  return hasPositiveFlag ? 'escalate' : 'routine';
+  return answers.some(categoryGatedYes) ? 'escalate' : 'routine';
 }

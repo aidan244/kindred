@@ -16,13 +16,29 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import type { ActivityVariant, EntryPath, OnboardingAnswers, RedFlagAnswer } from '../types';
+import type {
+  ActivityVariant,
+  CategoryAnswer,
+  EntryPath,
+  OnboardingAnswers,
+  VoiceNote,
+} from '../types';
+
+/** The ambient background wash's iteration — design-plan.md §13.8.
+ * 'off' renders nothing; 'hearth' / 'room' select iteration A / B. */
+export type AmbientBackground = 'off' | 'hearth' | 'room';
 
 export type ReportSubmissionStatus = 'idle' | 'submitted';
 
 export interface ReportSubmission {
   status: ReportSubmissionStatus;
   submittedAt: Date | null;
+  /** True when this submission was fired by the hard-stop interrupt (held-
+   * build-brief.md placeholder_content, "Hard-stop rule") rather than by
+   * pressing Send on the review screen — review was skipped, and any
+   * category not yet answered was genuinely never reached. Read by
+   * src/screens/reportAssembly.ts to set ReportData.hardStopEndedEarly. */
+  hardStopEndedEarly: boolean;
 }
 
 const initialOnboardingAnswers: OnboardingAnswers = {
@@ -34,7 +50,20 @@ const initialOnboardingAnswers: OnboardingAnswers = {
 const initialReportSubmission: ReportSubmission = {
   status: 'idle',
   submittedAt: null,
+  hardStopEndedEarly: false,
 };
+
+/** Revokes a VoiceNote's object URL, if it has one. The demo panel's
+ * synthetic voice note (design-plan.md §15.7) is a data: URL, never an
+ * object URL, and must never be revoked — revoking a data: URL is a no-op
+ * that also throws in some environments, so this checks the scheme first.
+ * Exported so any other cleanup path (e.g. Outcome.tsx leaving the screen)
+ * can revoke consistently rather than re-implementing the blob: check. */
+export function revokeVoiceNoteUrl(note: VoiceNote | null | undefined): void {
+  if (note?.url.startsWith('blob:')) {
+    URL.revokeObjectURL(note.url);
+  }
+}
 
 export interface AppState {
   /** Demo clock override; null means "use real time". */
@@ -47,6 +76,10 @@ export interface AppState {
   activityVariant: ActivityVariant;
   setActivityVariant: (variant: ActivityVariant) => void;
 
+  /** The ambient background wash — design-plan.md §13.8. Default 'hearth'. */
+  ambientBackground: AmbientBackground;
+  setAmbientBackground: (value: AmbientBackground) => void;
+
   /** How the current triage flow was entered. */
   entryPath: EntryPath;
   setEntryPath: (path: EntryPath) => void;
@@ -58,15 +91,24 @@ export interface AppState {
   onboardingAnswers: OnboardingAnswers;
   setOnboardingAnswers: (answers: OnboardingAnswers) => void;
 
-  redFlagAnswers: RedFlagAnswer[];
-  setRedFlagAnswers: (answers: RedFlagAnswer[]) => void;
+  categoryAnswers: CategoryAnswer[];
+  setCategoryAnswers: (answers: CategoryAnswer[]) => void;
 
   /** Free text captured on the triage flow's detail step. */
   triageDescription: string;
   setTriageDescription: (text: string) => void;
 
+  /** Voice note attached to the closing free-text beat (design-plan.md
+   * §15.6) — distinct from any voiceNote attached to an individual
+   * CategoryAnswer, which lives on that answer instead. */
+  triageVoiceNote: VoiceNote | null;
+  setTriageVoiceNote: (note: VoiceNote | null) => void;
+
   reportSubmission: ReportSubmission;
-  submitReport: () => void;
+  /** `endedEarly: true` marks this submission as fired by the hard-stop
+   * interrupt rather than the review screen's Send (held-build-brief.md
+   * placeholder_content, "Hard-stop rule") — see ReportSubmission above. */
+  submitReport: (options?: { endedEarly?: boolean }) => void;
 
   /** Restores everything to a clean demo start. */
   resetState: () => void;
@@ -77,30 +119,51 @@ const AppStateContext = createContext<AppState | null>(null);
 export function AppStateProvider({ children }: { children: ReactNode }): ReactElement {
   const [clockOverride, setClockOverride] = useState<Date | null>(null);
   const [activityVariant, setActivityVariant] = useState<ActivityVariant>('active');
+  const [ambientBackground, setAmbientBackground] = useState<AmbientBackground>('hearth');
   const [entryPath, setEntryPath] = useState<EntryPath>(null);
   const [alertActive, setAlertActive] = useState<boolean>(false);
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>(
     initialOnboardingAnswers
   );
-  const [redFlagAnswers, setRedFlagAnswers] = useState<RedFlagAnswer[]>([]);
+  const [categoryAnswers, setCategoryAnswers] = useState<CategoryAnswer[]>([]);
   const [triageDescription, setTriageDescription] = useState<string>('');
+  const [triageVoiceNote, setTriageVoiceNote] = useState<VoiceNote | null>(null);
   const [reportSubmission, setReportSubmission] = useState<ReportSubmission>(
     initialReportSubmission
   );
 
   const now = useCallback((): Date => clockOverride ?? new Date(), [clockOverride]);
 
-  const submitReport = useCallback((): void => {
-    setReportSubmission({ status: 'submitted', submittedAt: now() });
-  }, [now]);
+  const submitReport = useCallback(
+    (options?: { endedEarly?: boolean }): void => {
+      setReportSubmission({
+        status: 'submitted',
+        submittedAt: now(),
+        hardStopEndedEarly: options?.endedEarly ?? false,
+      });
+    },
+    [now]
+  );
 
   const resetState = useCallback((): void => {
+    // Revoke any live object URLs before clearing them, so a long demo
+    // session can't leak blobs (design-plan.md §15.6). Read via the
+    // functional setState form rather than closing over categoryAnswers /
+    // triageVoiceNote, so this can stay a zero-dependency callback.
+    setCategoryAnswers((prev) => {
+      prev.forEach((answer) => revokeVoiceNoteUrl(answer.voiceNote));
+      return [];
+    });
+    setTriageVoiceNote((prev) => {
+      revokeVoiceNoteUrl(prev);
+      return null;
+    });
     setClockOverride(null);
     setActivityVariant('active');
+    setAmbientBackground('hearth');
     setEntryPath(null);
     setAlertActive(false);
     setOnboardingAnswers(initialOnboardingAnswers);
-    setRedFlagAnswers([]);
     setTriageDescription('');
     setReportSubmission(initialReportSubmission);
   }, []);
@@ -112,16 +175,20 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
       now,
       activityVariant,
       setActivityVariant,
+      ambientBackground,
+      setAmbientBackground,
       entryPath,
       setEntryPath,
       alertActive,
       setAlertActive,
       onboardingAnswers,
       setOnboardingAnswers,
-      redFlagAnswers,
-      setRedFlagAnswers,
+      categoryAnswers,
+      setCategoryAnswers,
       triageDescription,
       setTriageDescription,
+      triageVoiceNote,
+      setTriageVoiceNote,
       reportSubmission,
       submitReport,
       resetState,
@@ -130,11 +197,13 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
       clockOverride,
       now,
       activityVariant,
+      ambientBackground,
       entryPath,
       alertActive,
       onboardingAnswers,
-      redFlagAnswers,
+      categoryAnswers,
       triageDescription,
+      triageVoiceNote,
       reportSubmission,
       submitReport,
       resetState,

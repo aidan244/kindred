@@ -26,7 +26,7 @@ export interface CheckInControlProps {
   variant: 'primary' | 'bar';
 }
 
-const LABEL = 'Check in';
+const LABEL = 'Speak to Kindred';
 
 export function CheckInControl({ variant }: CheckInControlProps): ReactElement {
   const { entryPath, setEntryPath, alertActive } = useAppState();

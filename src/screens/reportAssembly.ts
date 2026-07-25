@@ -11,11 +11,12 @@
 
 import type {
   ActivityVariant,
+  CategoryAnswer,
   ClinicHours,
   EntryPath,
   OnboardingAnswers,
   ReportData,
-  RedFlagAnswer,
+  VoiceNote,
 } from '../types';
 import { REPORT_DISCLAIMER } from '../data/clinicalContent';
 import { getMovementStream } from '../sensors/MovementStream';
@@ -25,8 +26,13 @@ export interface AssembleReportInput {
   gestationWeeks: number;
   entryPath: EntryPath;
   submittedAt: Date;
-  redFlagAnswers: RedFlagAnswer[];
+  categoryAnswers: CategoryAnswer[];
+  /** Whether this submission was fired by the hard-stop interrupt rather
+   * than the review screen's Send — see AppStateContext's ReportSubmission
+   * and ReportData.hardStopEndedEarly for why the PDF needs this. */
+  hardStopEndedEarly: boolean;
   freeTextDescription: string;
+  freeTextVoiceNote: VoiceNote | null;
   onboardingHistory: OnboardingAnswers;
   activityVariant: ActivityVariant;
 }
@@ -39,8 +45,10 @@ export function assembleReportData(input: AssembleReportInput): ReportData {
     gestationWeeks: input.gestationWeeks,
     entryPath: input.entryPath,
     submittedAt: input.submittedAt,
-    redFlagAnswers: input.redFlagAnswers,
+    categoryAnswers: input.categoryAnswers,
+    hardStopEndedEarly: input.hardStopEndedEarly,
     freeTextDescription: input.freeTextDescription,
+    freeTextVoiceNote: input.freeTextVoiceNote,
     onboardingHistory: input.onboardingHistory,
     recentActivity: stream.getWindow(24),
     activityBaseline: stream.getBaseline(),
