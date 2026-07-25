@@ -29,6 +29,14 @@ import type {
   RedFlagAnswer,
   ReportData,
 } from '../../types';
+import type { Baseline, MovementBin } from '../movement/types.ts';
+import { buildCanonicalReportPdfBlob } from '../report/pdf.ts';
+import type {
+  CanonicalReportData,
+  PriorEpisode,
+  RedFlagEntry,
+  StructuredDescription,
+} from '../report/types.ts';
 import type { HeldBackend } from './HeldBackend';
 import type {
   Alert,
@@ -57,6 +65,8 @@ const CLOSED_ALL_DAY: [string, string] = ['00:00', '00:00'];
 interface PatientRow {
   id: string;
   full_name: string;
+  date_of_birth: string;
+  clinic_reference: string | null;
   edd: string;
   clinic_id: string;
   booked_maternity_unit: string;
@@ -116,6 +126,24 @@ interface BaselineRow {
   by_hour: Array<{ hour: number; expectedActiveFraction: number; coverageFraction: number }>;
 }
 
+interface RedFlagAnswerFullRow {
+  question_id: string;
+  question_text: string;
+  answer: boolean;
+  detail: string | null;
+}
+
+interface SelfReportFullRow {
+  raw_text: string;
+  structured: unknown;
+}
+
+interface PriorSessionRow {
+  started_at: string;
+  entry_path: 'alert' | 'adhoc';
+  disposition: 'escalate' | 'routine' | null;
+}
+
 // ---------------------------------------------------------------------------
 // Pure helpers — unit-testable without a Supabase connection
 // ---------------------------------------------------------------------------
@@ -165,6 +193,56 @@ export function baselineToOverallFraction(baseline: BaselineRow | null): number 
   }
   const sum = usable.reduce((total, entry) => total + entry.expectedActiveFraction, 0);
   return sum / usable.length;
+}
+
+/** The denormalised question_text is used here, not a fresh lookup against
+ * redFlagQuestions — accurate even after the live question set changes,
+ * per the same reasoning saveRedFlagAnswers denormalises it at write time. */
+export function redFlagAnswerRowsToEntries(rows: RedFlagAnswerFullRow[]): RedFlagEntry[] {
+  return rows.map((row) => ({
+    question: row.question_text,
+    answer: row.answer ? 'yes' : 'no',
+    detail: row.detail ?? undefined,
+  }));
+}
+
+/** Maps the structure-free-text edge function's stored JSON output
+ * (self_reports.structured) into the report's StructuredDescription —
+ * returns null for anything that isn't shaped as expected, rather than
+ * throwing, since a real session may predate this feature or the call may
+ * have failed silently to the scripted fallback. */
+export function structuredFromRow(raw: unknown): StructuredDescription | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const value = raw as Partial<{
+    perceivedMovement: StructuredDescription['perceivedMovement'];
+    character: string[];
+    timeWindow: { start: string; end: string; confidence: 'stated' | 'inferred' } | null;
+    additionalSymptoms: string[];
+    verbatimHighlights: string[];
+  }>;
+  return {
+    perceivedMovement: value.perceivedMovement ?? null,
+    character: value.character ?? [],
+    timeWindow: value.timeWindow
+      ? {
+          start: new Date(value.timeWindow.start),
+          end: new Date(value.timeWindow.end),
+          confidence: value.timeWindow.confidence,
+        }
+      : null,
+    additionalSymptoms: value.additionalSymptoms ?? [],
+    verbatimHighlights: value.verbatimHighlights ?? [],
+  };
+}
+
+export function priorSessionRowsToEpisodes(rows: PriorSessionRow[]): PriorEpisode[] {
+  return rows.map((row) => ({
+    date: new Date(row.started_at),
+    entryPath: row.entry_path,
+    disposition: row.disposition,
+  }));
 }
 
 export function sessionFromRow(
@@ -495,6 +573,111 @@ export class SupabaseBackend implements HeldBackend {
       throw new Error(`Unknown report: ${reportId}`);
     }
     return reportFromRow(data as ReportRow);
+  }
+
+  async buildCanonicalReportPdf(sessionId: SessionId): Promise<Blob> {
+    const { data: sessionRow, error: sessionError } = await this.client
+      .from('sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single();
+    if (sessionError || !sessionRow) {
+      throw new Error(`Unknown session: ${sessionId}`);
+    }
+    const session = sessionRow as SessionRow;
+    const now = session.completed_at ? new Date(session.completed_at) : new Date();
+
+    const { data: answerRows } = await this.client
+      .from('red_flag_answers')
+      .select('question_id, question_text, answer, detail')
+      .eq('session_id', sessionId);
+    const redFlags = redFlagAnswerRowsToEntries((answerRows as RedFlagAnswerFullRow[] | null) ?? []);
+
+    const { data: selfReportRows } = await this.client
+      .from('self_reports')
+      .select('raw_text, structured')
+      .eq('session_id', sessionId)
+      .order('captured_at', { ascending: false })
+      .limit(1);
+    const latestSelfReport = (selfReportRows as SelfReportFullRow[] | null)?.[0] ?? null;
+
+    const { patientRow, clinicRow } = await this.loadPatientAndClinic();
+
+    // 8 days of history: baseline needs a rolling 7 days, plus the
+    // preceding 24h the band actually renders.
+    const since = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+    const { data: binRows, error: binError } = await this.client
+      .from('movement_bins')
+      .select('t, active_windows, covered_windows')
+      .eq('patient_id', this.patientId)
+      .gte('t', since.toISOString())
+      .lt('t', now.toISOString())
+      .order('t', { ascending: true });
+    if (binError) {
+      throw new Error(`buildCanonicalReportPdf failed loading movement_bins: ${binError.message}`);
+    }
+    const allBins: MovementBin[] = ((binRows as MovementBinRow[] | null) ?? []).map((row) => ({
+      t: new Date(row.t),
+      activeWindows: row.active_windows,
+      coveredWindows: row.covered_windows,
+    }));
+    const recentCutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
+    const recentBins = allBins.filter((bin) => bin.t.getTime() >= recentCutoffMs);
+
+    const { data: baselineRow } = await this.client
+      .from('baselines')
+      .select('by_hour')
+      .eq('patient_id', this.patientId)
+      .maybeSingle();
+    const baseline: Baseline | null = baselineRow
+      ? {
+          computedAt: now,
+          daysUsed: 0,
+          sufficient: true,
+          byHour: (baselineRow as BaselineRow).by_hour,
+        }
+      : null;
+
+    const { data: priorRows } = await this.client
+      .from('sessions')
+      .select('started_at, entry_path, disposition')
+      .eq('patient_id', this.patientId)
+      .not('completed_at', 'is', null)
+      .neq('id', sessionId)
+      .order('started_at', { ascending: true });
+    const priorEpisodes = priorSessionRowsToEpisodes((priorRows as PriorSessionRow[] | null) ?? []);
+
+    const patient = toFrontendPatient(patientRow, clinicRow, now);
+    const triageContact = session.triage_contact_shown ?? getTriageContact(now, patient);
+    const answersForDisposition: RedFlagAnswer[] = ((answerRows as RedFlagAnswerFullRow[] | null) ?? []).map(
+      (row) => ({ questionId: row.question_id, answer: row.answer ? 'yes' : 'no', detail: row.detail ?? undefined })
+    );
+    const dispositionValue: 'escalate' | 'routine' =
+      session.disposition ?? disposition(session.entry_path, answersForDisposition);
+
+    const data: CanonicalReportData = {
+      patientName: patientRow.full_name,
+      dateOfBirth: new Date(patientRow.date_of_birth),
+      clinicReference: patientRow.clinic_reference,
+      edd: new Date(patientRow.edd),
+      bookedUnitName: patientRow.booked_maternity_unit,
+      clinicName: clinicRow.name,
+      contactedAt: now,
+      entryPath: session.entry_path,
+      disposition: dispositionValue,
+      triageContact,
+      redFlags,
+      freeTextRaw: latestSelfReport?.raw_text ?? '',
+      structured: structuredFromRow(latestSelfReport?.structured),
+      movementBins: recentBins,
+      baseline,
+      onboardingHistory: patientRow.onboarding_history ?? EMPTY_ONBOARDING_ANSWERS,
+      priorEpisodes,
+      reportGeneratedAt: new Date(),
+    };
+
+    await this.audit('canonical_report_built', { sessionId });
+    return buildCanonicalReportPdfBlob(data);
   }
 
   async audit(event: string, detail: Record<string, unknown> = {}): Promise<void> {

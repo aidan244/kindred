@@ -56,6 +56,12 @@ export interface HeldBackend {
   buildReportData(sessionId: SessionId): Promise<ReportData>;
   storeReport(sessionId: SessionId, pdf: Blob): Promise<ReportRecord>;
   getReport(reportId: ReportId): Promise<ReportRecord>;
+  /** Builds the richer, SBAR-structured clinical PDF (src/lib/report/*) —
+   * the clinic's canonical copy, not the frontend's own instant local
+   * download (src/logic/reportPdf.ts, unchanged). See the Phase 4 plan for
+   * why those are deliberately two different documents. Not wired into
+   * `storeReport` — a new, additional capability, not a replacement. */
+  buildCanonicalReportPdf(sessionId: SessionId): Promise<Blob>;
 
   // -- audit ------------------------------------------------------------
   audit(event: string, detail?: Record<string, unknown>): Promise<void>;

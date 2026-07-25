@@ -15,6 +15,12 @@ import { patientFixture, REPORT_DISCLAIMER } from '../../data/clinicalContent';
 import { disposition } from '../../logic/disposition';
 import { getTriageContact } from '../../logic/triageContact';
 import { getMovementStream } from '../../sensors/MovementStream';
+import { aggregateToBins } from '../movement/aggregate.ts';
+import { computeBaseline } from '../movement/baseline.ts';
+import { generateMovement } from '../movement/generator.ts';
+import { demoRedFlagAnswers, redFlagCategories, toRedFlagEntries } from '../report/clinicalRedFlags.ts';
+import { buildCanonicalReportPdfBlob } from '../report/pdf.ts';
+import type { CanonicalReportData, PriorEpisode } from '../report/types.ts';
 import type { HeldBackend } from './HeldBackend';
 import type {
   Alert,
@@ -28,6 +34,30 @@ import type {
   SessionEntryPath,
   SessionId,
 } from './types';
+
+// Fixture-only fields the canonical report needs that the frontend's own
+// Patient type (src/types.ts) doesn't carry — patientFixture has no DOB,
+// EDD, or clinic reference, since the live app derives gestation from a
+// single weeks number rather than an EDD. These exist only so the mock
+// path can demonstrate the canonical PDF's section 1; they are not read
+// anywhere else.
+const MOCK_PATIENT_DOB = new Date('1996-04-12T00:00:00');
+const MOCK_CLINIC_REFERENCE = 'TH-2291';
+
+/** Back-derives a plausible EDD from patientFixture's fixed gestationWeeks
+ * relative to whatever `now` is at call time, so the demo stays internally
+ * consistent (weeks-at-contact matches patientFixture.gestationWeeks)
+ * regardless of when it's run. */
+function eddForGestationWeeks(gestationWeeks: number, now: Date): Date {
+  const daysRemaining = 280 - gestationWeeks * 7;
+  return new Date(now.getTime() + daysRemaining * 24 * 60 * 60 * 1000);
+}
+
+// A separate seed from src/data/seedActivity.ts's own — this drives Phase
+// 2's richer, coverage-aware generator (src/lib/movement/generator.ts),
+// used only for the canonical PDF's movement band, which needs coverage
+// data the frontend's boolean-only ActivitySample can't provide.
+const CANONICAL_REPORT_GENERATOR_SEED = 0x48454c44; // 'HELD'
 
 // Onboarding isn't captured through this backend in Phase 1 (no frontend
 // file wires it in yet — see the plan's "No frontend files touched" note).
@@ -215,6 +245,61 @@ export class MockBackend implements HeldBackend {
       throw new Error(`Unknown report: ${reportId}`);
     }
     return record;
+  }
+
+  async buildCanonicalReportPdf(sessionId: SessionId): Promise<Blob> {
+    const session = this.requireSession(sessionId);
+    const now = session.completedAt ?? this.now();
+
+    // Phase 2's own generator, not src/data/seedActivity.ts — the
+    // canonical PDF's movement band needs coverage (covered_windows), and
+    // the frontend's boolean-only ActivitySample has no such field.
+    const generated = generateMovement({
+      seed: CANONICAL_REPORT_GENERATOR_SEED,
+      from: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
+      to: now,
+    });
+    const bins = aggregateToBins(generated.sensorWindows);
+    const baseline = computeBaseline(bins, now);
+    const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
+    const recentBins = bins.filter((bin) => bin.t.getTime() >= cutoffMs);
+
+    // Fixture prior episodes, purely to demonstrate the recurrence table —
+    // documented as fixture data the same way patientFixture itself is.
+    const priorEpisodes: PriorEpisode[] = [
+      { date: new Date(now.getTime() - 9 * 24 * 60 * 60 * 1000), entryPath: 'adhoc', disposition: 'routine' },
+      { date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), entryPath: 'alert', disposition: 'escalate' },
+    ];
+
+    const data: CanonicalReportData = {
+      patientName: patientFixture.name,
+      dateOfBirth: MOCK_PATIENT_DOB,
+      clinicReference: MOCK_CLINIC_REFERENCE,
+      edd: eddForGestationWeeks(patientFixture.gestationWeeks, now),
+      bookedUnitName: patientFixture.bookedUnit.name,
+      clinicName: patientFixture.clinic.name,
+      contactedAt: now,
+      entryPath: session.entryPath,
+      disposition: session.disposition ?? disposition(session.entryPath, session.redFlagAnswers),
+      triageContact: session.triageContactShown ?? getTriageContact(now, patientFixture),
+      // Category/follow-up fixture content (clinicalRedFlags.ts) — the
+      // real answers she'd have actually given to the flat questionnaire
+      // (session.redFlagAnswers) are a different shape and not what this
+      // demo path renders; see the Phase 4 plan for why.
+      redFlags: toRedFlagEntries(redFlagCategories, demoRedFlagAnswers),
+      freeTextRaw: session.freeTextDescription,
+      // No live extraction call here — honestly null rather than faking
+      // structured output the mock never actually produced.
+      structured: null,
+      movementBins: recentBins,
+      baseline,
+      onboardingHistory: EMPTY_ONBOARDING_ANSWERS,
+      priorEpisodes,
+      reportGeneratedAt: this.now(),
+    };
+
+    await this.audit('canonical_report_built', { sessionId });
+    return buildCanonicalReportPdfBlob(data);
   }
 
   async audit(event: string, detail: Record<string, unknown> = {}): Promise<void> {
