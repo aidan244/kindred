@@ -148,23 +148,42 @@
   --dur-orb-ring-2: 150s;
   --dur-orb-field: 44s;
 
-  /* Aura breath periods — the brightness pulse that runs alongside the
-   * drift. Deliberately NOT the drift periods: two loops of different length
-   * on the same element is what stops the aura reading as one mechanical
-   * cycle. Each is coprime-ish with its own bloom's drift period, so a bloom
-   * is rarely at the same point of both loops twice. */
-  --dur-aura-breath-core: 13s;
-  --dur-aura-breath-ring-1: 17s;
-  --dur-aura-breath-ring-2: 23s;
-  --dur-aura-breath-field: 19s;
+  /* Aura breath periods — the brightness pulse that runs alongside the drift.
+   *
+   * ANCHORED TO THE CANONICAL BREATH, ON REPORT THAT THE AURA STILL READ AS A
+   * STILL IMAGE. These were 13/17/23/19s: 1.4-2.5x SLOWER than `--dur-breath`,
+   * the 9s cycle the avatar, the pairing mark and the recording ring already
+   * breathe on. A half-cycle therefore ran 6.5-11.5 seconds, and a luminance
+   * change spread that thin over a 34-58px blur is below the rate at which a
+   * person notices change at all — the same failure the drift periods above
+   * were already corrected for, left in place one loop lower down.
+   *
+   * The core now breathes on `--dur-breath` itself rather than near it, so the
+   * backdrop and the foreground share one rhythm instead of two that nearly
+   * agree. The outer layers lag slightly behind it: still pairwise
+   * non-multiple, so the composite never visibly loops, but close enough that
+   * the whole field reads as one breath (see the delays in Aura.tsx). */
+  --dur-aura-breath-core: var(--dur-breath); /* 9s */
+  --dur-aura-breath-ring-1: 11s;
+  --dur-aura-breath-ring-2: 13s;
+  --dur-aura-breath-field: 10s;
 
   /* How far down from its designed alpha a bloom dims at the bottom of its
-   * breath. The breath only ever REDUCES a bloom's presence — the designed
-   * alpha in the theme blocks below is the contrast-verified ceiling and is
-   * never exceeded, so this can never push body text under 4.5:1. Trough to
-   * peak is a ~43% swing in light, which is what makes it legible as
-   * breathing rather than as flicker. */
-  --aura-breath-trough: 0.55;
+   * breath.
+   *
+   * THE BREATH ONLY EVER *REDUCES* A BLOOM'S PRESENCE. The designed alpha in
+   * the theme blocks below is the contrast-verified ceiling and is never
+   * exceeded, so lowering this figure cannot push body text under 4.5:1 — it
+   * can only ever improve contrast, at every instant except the peak, which is
+   * unchanged. That is what makes this the safe lever for visibility and the
+   * alphas the unsafe one.
+   *
+   * Was 0.55, a 1.8x swing. On layers whose peak alpha is 0.08-0.18 to begin
+   * with, 1.8x of that is a few RGB steps under heavy blur: measurably present,
+   * perceptually absent. At 0.15 the swing is ~6.7x, which carries the core
+   * from barely-a-tint to a clear warm glow and back. It does not reach zero
+   * deliberately — the room should dim, never switch off. */
+  --aura-breath-trough: 0.15;
 
   /* Route transition — handoff README "page_transitions". One visual
    * language for the whole app: opacity plus a short directional slide. */

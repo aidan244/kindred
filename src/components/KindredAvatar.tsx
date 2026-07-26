@@ -1,62 +1,63 @@
 /**
- * The Kindred avatar — a new hand-drawn moment in the §6.2 family, added for
- * the reworked home screen. The founder's brief: a glowing single-line
- * figure "inspired by Terry from Soul (Pixar)" — one flowing stroke,
- * generous curves, sitting beside/under the greeting.
+ * The presence under Home's greeting — THE PRODUCT'S MARK, in a breathing lamp
+ * glow.
  *
- * Hand-drawn law (§6.2), same hand as KindredMark / BandMark: fill="none",
- * stroke="currentColor", stroke-width="1.25" in a fixed viewBox (so it scales
- * proportionally at any rendered size), round caps and joins. Deliberate
- * imperfection is the point — the two sides of the figure are not exact
- * mirrors of each other, and the contour is left open at the base rather
- * than closed into a literal body outline, the same way the cupped-hand mark
- * and the band mark are both open curves rather than closed shapes.
+ * WHAT THIS USED TO BE, AND WHY IT IS GONE. It carried a bespoke single-line
+ * standing figure ("inspired by Terry from Soul"), drawn only for this one
+ * screen. The product now has an actual logo (src/components/KindredMark.tsx),
+ * so a second hand-drawn figure appearing nowhere else made Home the one
+ * screen that introduced her to a shape the rest of the app never used again.
+ * The glow, the breath, the sizing and the safety rules below are all kept
+ * verbatim; only the drawing inside them changed.
  *
- * Construction: a single continuous path, one M and a chain of C curves,
- * traced from the lower-left hem up through a hip/waist/shoulder taper, over
- * a softly rounded head-like crest, and back down the other side to the
- * lower-right hem — a calm standing presence rather than a rendered anatomy.
+ * IT IS THE SAME TREATMENT PairingStep GIVES THE MARK — mark in a `--lamp-3`
+ * glow, glow breathing on the shared `animate-breath` loop, line held still.
+ * That is deliberate: onboarding's pairing step is where she first meets this
+ * shape, and Home is where she meets it every day after. Two different
+ * treatments of one mark would read as two different marks.
  *
- * Safety rule: this is a presence, not a face. It carries no eyes, no mouth,
- * no expression of any kind — nothing that could read as a verdict on how
- * she or the baby are doing (design-plan.md rule 6 bans a smiley outright,
- * and §6.1 bans WarningCircle-style cues for the same reason). Do not add
- * interior detail of any kind to this mark.
+ * SAFETY RULE, UNCHANGED AND STILL LOAD-BEARING: this is a presence, not a
+ * status light. It carries no face, no expression, and — the part that matters
+ * — NO STATE. It is the same drawing at the same weight in the same colour
+ * whatever the sensor says, whatever the time is, and whatever she answered
+ * last time. design-plan.md rule 6 bans a smiley outright and §6.1 bans
+ * WarningCircle-style cues for the same reason: the instant this mark could
+ * differ between two visits, it becomes a verdict she has to interpret. Do not
+ * give it variants.
  *
- * Sits in a soft `--lamp-3` glow with the same breathing treatment as the
- * onboarding pairing mark (src/screens/onboarding/PairingStep.tsx): the glow
- * pulses on the shared `animate-breath` loop, the line itself stays still.
- * Under prefers-reduced-motion the glow renders static at full opacity
- * rather than animating, matching PairingStep's own reduced-motion handling.
+ * Under prefers-reduced-motion the glow renders static at full opacity rather
+ * than animating, matching PairingStep and Aura — the room stays lit, the light
+ * stops moving.
  */
 
 import type { ReactElement } from 'react';
+import { KindredMark } from './KindredMark';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 export interface KindredAvatarProps {
-  /** Rendered footprint (glow diameter) in px. The figure inside scales to
+  /** Rendered footprint (glow diameter) in px. The mark inside scales to
    * match, keeping its own aspect ratio. */
   size?: number;
   className?: string;
 }
 
-const VIEW_WIDTH = 60;
-const VIEW_HEIGHT = 104;
-
-/** One continuous stroke — a calm standing presence, asymmetric on purpose
- * (the right side is not a mirror of the left), open at the hem. */
-const FIGURE_PATH =
-  'M24 94.2 C 15 84.3, 14 71.4, 19 60.3 C 22.6 52.7, 25.2 47.1, 21.4 40.1 ' +
-  'C 18.9 34.6, 17.4 28.2, 23 21.6 C 20 17.1, 21.1 11.6, 27.6 8.1 ' +
-  'C 30.9 6.3, 33.7 6.5, 36.1 8.5 C 41.1 12.6, 41.7 18.1, 38 22.6 ' +
-  'C 43.1 28.6, 41.9 35.1, 39.5 40.6 C 36 47.6, 38.8 53.1, 42.1 60.6 ' +
-  'C 47.2 71.6, 46.2 84.6, 37.2 94.5';
+/**
+ * How much of the footprint the mark itself occupies.
+ *
+ * 0.82 is inherited from the figure this replaced, and it still holds for the
+ * same reason: the glow has to read as light AROUND the drawing rather than a
+ * disc behind it, so the mark has to sit inside the glow's falloff with room
+ * to spare. The mark is letterboxed inside its own square box (it is taller
+ * than it is wide — see KindredMark), so the drawn ink is narrower than this
+ * again, which is what keeps the glow visible either side of it.
+ */
+const MARK_FRACTION = 0.82;
+const GLOW_FRACTION = 0.95;
 
 export function KindredAvatar({ size = 104, className }: KindredAvatarProps): ReactElement {
   const reduced = usePrefersReducedMotion();
-  const figureHeight = size * 0.82;
-  const figureWidth = (figureHeight * VIEW_WIDTH) / VIEW_HEIGHT;
-  const glowSize = size * 0.95;
+  const markSize = size * MARK_FRACTION;
+  const glowSize = size * GLOW_FRACTION;
 
   return (
     <div
@@ -81,20 +82,10 @@ export function KindredAvatar({ size = 104, className }: KindredAvatarProps): Re
           opacity: reduced ? 1 : undefined,
         }}
       />
-      <svg
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        width={figureWidth}
-        height={figureHeight}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        className="relative text-accent"
-      >
-        <path d={FIGURE_PATH} />
-      </svg>
+      {/* KindredMark is `aria-hidden` itself and picks its own stroke weight
+          from the size it is given, so at this scale it draws the light line
+          the 96px onboarding mark does rather than the heavy small-size one. */}
+      <KindredMark size={markSize} className="relative text-accent" />
     </div>
   );
 }
