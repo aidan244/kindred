@@ -10,7 +10,15 @@
  * question text or clinical wording across components.
  */
 
-import type { CategoryAnswer, FollowUpAnswerValue, HistoryFlag, Patient } from '../types';
+import type {
+  CategoryAnswer,
+  FollowUpAnswerValue,
+  HistoryFlag,
+  Patient,
+  TriageContact,
+  YesNo,
+  YesNoUnsure,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Onboarding questions
@@ -189,6 +197,11 @@ export interface RedFlagFollowUp {
 
 export interface RedFlagCategory {
   id: string;
+  /** The short noun the review screen files this category under (handoff
+   * README, screen 06 — each card's muted caption label). Distinct from
+   * `gateQuestion`, which is what the conversation actually asks: "Are you
+   * bleeding?" is a question, "Bleeding" is a heading. Patient-facing. */
+  label: string;
   gateQuestion: string;
   gateType: 'yesno';
   hardStop: boolean;
@@ -216,6 +229,7 @@ export const COLLAPSE_CATEGORY_ID = 'collapse-seizure-trauma';
 export const redFlagCategories: RedFlagCategory[] = [
   {
     id: BLEEDING_CATEGORY_ID,
+    label: 'Bleeding',
     gateQuestion: 'Are you bleeding?',
     gateType: 'yesno',
     hardStop: false,
@@ -242,6 +256,7 @@ export const redFlagCategories: RedFlagCategory[] = [
   },
   {
     id: 'fluid',
+    label: 'Fluid',
     gateQuestion: 'Any gush or leaking fluid?',
     gateType: 'yesno',
     hardStop: false,
@@ -263,6 +278,7 @@ export const redFlagCategories: RedFlagCategory[] = [
   },
   {
     id: 'pain',
+    label: 'Pain',
     gateQuestion: 'Do you have pain?',
     gateType: 'yesno',
     hardStop: false,
@@ -299,6 +315,7 @@ export const redFlagCategories: RedFlagCategory[] = [
   },
   {
     id: COLLAPSE_CATEGORY_ID,
+    label: 'Collapse or injury',
     gateQuestion: 'Any seizure, fainting, collapse, or head injury?',
     gateType: 'yesno',
     hardStop: true,
@@ -307,6 +324,7 @@ export const redFlagCategories: RedFlagCategory[] = [
   },
   {
     id: 'vomiting',
+    label: 'Vomiting',
     gateQuestion: 'Have you vomited in the past 24 hours?',
     gateType: 'yesno',
     hardStop: false,
@@ -334,6 +352,7 @@ export const redFlagCategories: RedFlagCategory[] = [
   },
   {
     id: 'movement',
+    label: 'Movements',
     gateQuestion: 'Has the baby moved less, stopped, or changed from normal?',
     gateType: 'yesno',
     hardStop: false,
@@ -351,6 +370,32 @@ export const redFlagCategories: RedFlagCategory[] = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------------------
+// The yes/no vocabulary.
+//
+// ONE DEFINITION, used everywhere. These two words appeared independently in
+// six places (the conversation's chips, its answer bubbles, the review
+// screen, the PDF and this file's own formatter), which meant the screen
+// whose entire purpose is letting her verify what her clinic will read could
+// drift out of step with the transcript it is verifying. Nothing may define
+// "Yes"/"No" again: import `YES_NO_OPTIONS` for a chip row and `yesNoLabel`
+// for a rendered answer.
+// ---------------------------------------------------------------------------
+
+export const YES_LABEL = 'Yes';
+export const NO_LABEL = 'No';
+
+/** The chips a gate question (or a `yesno` follow-up) offers. */
+export const YES_NO_OPTIONS: readonly FollowUpOption[] = [
+  { value: 'yes', label: YES_LABEL },
+  { value: 'no', label: NO_LABEL },
+];
+
+/** One recorded yes/no answer, as she will read it back. */
+export function yesNoLabel(value: YesNo): string {
+  return value === 'yes' ? YES_LABEL : NO_LABEL;
+}
 
 /**
  * Cross-category overlap (placeholder_content) — given the category ids a
@@ -370,7 +415,7 @@ export function overlapRecap(categoryIds: string[], answers: CategoryAnswer[]): 
       if (!category || !answer) {
         return null;
       }
-      return `${category.gateQuestion} — ${answer.gateAnswer === 'yes' ? 'Yes' : 'No'}`;
+      return `${category.gateQuestion} — ${yesNoLabel(answer.gateAnswer)}`;
     })
     .filter((line): line is string => line !== null);
   if (lines.length === 0) {
@@ -393,7 +438,7 @@ export function formatFollowUpAnswerValue(
   const labelFor = (raw: string): string => options?.find((o) => o.value === raw)?.label ?? raw;
   switch (value.type) {
     case 'yesno':
-      return value.value === 'yes' ? 'Yes' : 'No';
+      return yesNoLabel(value.value);
     case 'text':
       return value.value;
     case 'number':
@@ -415,22 +460,33 @@ export function formatFollowUpAnswerValue(
 // from here instead.
 // ---------------------------------------------------------------------------
 
-/** The default, always-quieter secondary 999 route rendered under the
- * primary emergency control (src/components/EmergencyCall.tsx). */
-export const EMERGENCY_DEFAULT_NOTE = 'Heavy bleeding, collapse, or fitting: call 999';
-
-/** The bleeding-specific 999 variant, shown instead of the default note once
- * she has answered yes to the Bleeding category's gate question in the
- * red-flag questionnaire. Rendered on both the triage flow
- * (src/screens/TriageFlow.tsx) and the outcome screen (src/screens/Outcome.tsx)
- * — one constant, not two copies.
+/**
+ * THE ONE CALL ROUTE. Paramedics, and nothing else.
  *
- * Rekeyed from the old flat question id `bleeding-fluid` to the amended
- * schema's `BLEEDING_CATEGORY_ID` ('bleeding') — see the load-bearing-id
- * comment on that constant, above. Fluid loss is now its own category
- * ('fluid') rather than folded into this one, so this note is checked
- * against the Bleeding category's gate answer specifically. */
-export const BLEEDING_EMERGENCY_NOTE = 'Bleeding was flagged. If it becomes heavy, call 999.';
+ * This product used to offer three: her private clinic during its opening
+ * hours, the 24/7 maternity unit outside them, and 999 as a quieter note
+ * underneath — plus a separate operator line on every screen. That was
+ * reduced to one on instruction ("if they need to call anyone it will be
+ * paramedics"), because a person choosing between numbers is doing triage on
+ * herself at the moment she is least able to, and because two call controls
+ * on one screen is a decision nobody wanted to be asked to make.
+ *
+ * What that removed, recorded so nobody has to reconstruct it: the
+ * clinic/unit distinction and the opening-hours logic behind it, the quiet
+ * 999 fallback note, the bleeding-specific variant of that note, and the
+ * operator row. `getTriageContact()` (src/logic/triageContact.ts) still
+ * resolves a clinic, but only to NAME it in the report's "sent to" line — it
+ * no longer resolves anything anyone dials.
+ */
+export const EMERGENCY_CALL_LABEL = 'Call paramedics';
+export const EMERGENCY_NUMBER = '999';
+
+/**
+ * What a screen reader hears on the call control. A call control must state
+ * WHAT IT CALLS (handoff README, accessibility), and "Call paramedics" on its
+ * own does not say which number is about to be dialled.
+ */
+export const EMERGENCY_CALL_ACCESSIBLE_LABEL = `${EMERGENCY_CALL_LABEL} on ${EMERGENCY_NUMBER}`;
 
 /** The alert framing block's title and body (src/components/AlertFramingBlock.tsx),
  * shown when Home is in its alert state. Body updated per the founder's
@@ -440,6 +496,33 @@ export const BLEEDING_EMERGENCY_NOTE = 'Bleeding was flagged. If it becomes heav
 export const ALERT_FRAMING_TITLE = "Worth checking on your baby's movements.";
 export const ALERT_FRAMING_BODY =
   'You know your baby best. Speak to Kindred if anything feels different.';
+
+/** The one-tap way out of the alert block. Never a dialog, never a
+ * confirmation (handoff README §02). */
+export const ALERT_FRAMING_DISMISS_LABEL = 'Dismiss';
+
+/**
+ * The label on the product's primary action, in both the places it appears —
+ * the docked CheckInControl and the alert block's accent pill. It used to be
+ * exported from src/components/CheckInControl.tsx, which made a COMPONENT the
+ * source of truth for copy another component imported; it is referenced in
+ * prose throughout this file (ALERT_FRAMING_BODY, `outcomeRoutineWaitNote`),
+ * none of which could be kept in step with a constant living over there.
+ */
+export const CHECK_IN_CONTROL_LABEL = 'Speak to Kindred';
+
+/**
+ * The simulated push notification (handoff README §02, PushBanner).
+ *
+ * The body's first sentence IS `ALERT_FRAMING_TITLE`, composed rather than
+ * retyped: this is the most safety-sensitive sentence in the product — the
+ * one governed by "lead with the action and her own perception, never a
+ * diagnostic assertion" — and it existed as two independent copies, either of
+ * which could be edited without the other. The trailing clause is the
+ * banner's own: permission to wait.
+ */
+export const PUSH_BANNER_TITLE = 'Kindred';
+export const PUSH_BANNER_BODY = `${ALERT_FRAMING_TITLE} Open when you're ready.`;
 
 /** Fixed disclaimer that must appear on every generated report. */
 export const REPORT_DISCLAIMER =
@@ -500,28 +583,362 @@ export const CHECK_IN_MIC_UNAVAILABLE =
 // src/screens/triage/CheckInConversation.tsx).
 // ---------------------------------------------------------------------------
 
-/** The quiet link on the emergency outcome screen back into the
- * conversation. Deliberately not styled as a call to action — adding more
- * detail is optional and must never look like a required next step. */
-export const EMERGENCY_ADD_MORE_LABEL = 'Add more detail for your clinic';
-
-/** Replaces CHECK_IN_CLOSING_ACK when she returns via EMERGENCY_ADD_MORE_LABEL
- * — there is no review to send her to (it stayed skipped), so the closing
- * line says what actually happens instead of promising a review screen. */
-export const CHECK_IN_HARD_STOP_CLOSING_ACK = 'Thank you. This has been added to your report.';
-
-/** The button that returns her to the outcome screen after adding more,
- * once a hard stop has already fired. Replaces "Continue to review" on that
- * path — there is nothing to review, and the number she is returning to is
- * unchanged (no-downgrade rule: nothing she adds here can move her out of
- * the emergency tier). */
-export const CHECK_IN_RETURN_TO_EMERGENCY_LABEL = 'Back to your emergency contact';
-
 /** Appended to a report section when a voice note is attached. Factual only:
  * it states that a recording exists and where the clinic can get it. It never
  * describes, transcribes, or characterises the recording. */
 export const REPORT_VOICE_NOTE_NOTE =
   'A voice note was recorded and is available to the clinic.';
+
+// ---------------------------------------------------------------------------
+// Screen copy (handoff README, "Screens"). Patient-facing, so it lives here
+// with the rest of the copy — never inline in a component.
+//
+// Voice rules every string below obeys: second person, sentence case, no
+// exclamation mark, no uppercase warning, and never the word "detected".
+// Nothing here interprets data or offers a verdict.
+// ---------------------------------------------------------------------------
+
+/** 01 — the greeting, and the sync line beneath the avatar. Metadata about
+ * the app rather than anything clinical: who is looking, and when the band
+ * last spoke. Neither makes a claim about her or the baby. */
+export function homeGreeting(firstName: string): string {
+  return `Welcome back, ${firstName}.`;
+}
+
+/** The sync line's whole vocabulary, in one place. `NOT_YET_SYNCED` in
+ * particular is a statement about the band's state sitting directly above
+ * `bandOfflineCopy()`'s, so the two are written and reviewed together. */
+export function homeSyncedAgo(latest: Date | null, nowMs: number): string {
+  if (!latest) {
+    return 'Not yet synced';
+  }
+  const diffMinutes = Math.round(Math.max(0, nowMs - latest.getTime()) / 60000);
+  if (diffMinutes < 1) {
+    return 'Synced just now';
+  }
+  if (diffMinutes === 1) {
+    return 'Synced 1 minute ago';
+  }
+  if (diffMinutes < 60) {
+    return `Synced ${diffMinutes} minutes ago`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours === 1) {
+    return 'Synced 1 hour ago';
+  }
+  return `Synced ${diffHours} hours ago`;
+}
+
+/** 01 — the live-data card. */
+export const HOME_WINDOW_LABEL = 'Last 24 hours';
+export const HOME_KICKS_LABEL = "Baby's kicks";
+/** The unit beside Home's big number: kicks counted TODAY so far. */
+export const HOME_KICKS_UNIT = 'kicks today';
+export const HOME_TRACE_START_LABEL = '7 days ago';
+export const TRACE_NOW_LABEL = 'today';
+
+/** The live view counts by the hour, so its trailing label is 'now'. */
+export const TRACE_HOUR_NOW_LABEL = 'now';
+export const HOME_OPEN_LIVE_VIEW = 'Open live view';
+
+/** 01 — the band-offline variant. A statement about the hardware, never
+ * about the baby, and it names the one thing she can actually do. */
+export function bandOfflineCopy(sinceClock: string): string {
+  return `No signal since ${sinceClock}. Check the band is on.`;
+}
+
+/** The same statement when there is no honest clock to quote — the card
+ * mounted with the band already quiet, so this session never saw a sample.
+ * Same voice, same two facts, one fewer claim. */
+export const BAND_OFFLINE_NO_CLOCK = 'No signal from the band. Check the band is on.';
+
+/**
+ * What a screen reader hears in place of the trace (handoff README,
+ * accessibility): a SUMMARY, never a data dump.
+ *
+ * It announces THE SAME NUMBER THE SCREEN SHOWS — Home's latest sample, the
+ * live view's newest settled one — rather than a mean computed across the
+ * window. A derived average would be the closest thing to a score anywhere in
+ * this product, and it would be the version only non-sighted users get. No
+ * range, no list of samples, and no adjective that characterises the data
+ * ("steady", "normal", "reassuring"): those are verdicts, and this product
+ * does not have one.
+ */
+export function kickTraceCardSummary(kicks: number): string {
+  // Announces the last COMPLETE day, which is the sample the dot marks —
+  // never today's running total, because a partial day is always lower and
+  // reading it aloud as the current figure would imply a fall every morning.
+  return `Your baby's kicks, by day, over the last week. ${kicks} kicks on the last full day.`;
+}
+
+export function kickTraceLiveSummary(kicks: number): string {
+  return `Your baby's kicks, by hour. ${kicks} kicks in the last full hour.`;
+}
+
+/** 03 — the third chip on a gate question: a way to answer in her own words
+ * instead of picking one of the two. */
+export const CHECK_IN_ADD_MORE_INFO = 'Add more info';
+/** …and the way back out of it. */
+export const CHECK_IN_BACK_TO_OPTIONS = 'Back';
+
+/** 04/06 — the affordance that lets her change an answer she already gave.
+ * Never a tick, never a pencil: the words say what it does. */
+export const CHANGE_THIS_LABEL = 'Change this';
+
+/** What a screen reader hears on that affordance. The visible words are the
+ * same on every card and every exchange, so the accessible name names the
+ * thing being changed — one sentence pattern, reviewed here with the rest of
+ * the voice rather than assembled at four different call sites. */
+export function changeAnswerAccessibleLabel(prompt: string): string {
+  return `Change your answer to: ${prompt}`;
+}
+
+/** 03/04 — the button that commits a multiselect follow-up, and the one that
+ * leaves the conversation for review. */
+export const CHECK_IN_CONTINUE_LABEL = 'Continue';
+export const CHECK_IN_CONTINUE_TO_REVIEW_LABEL = 'Continue to review';
+/** …and the way past the closing beat without adding anything. */
+export const CHECK_IN_CLOSING_SKIP_LABEL = 'Nothing to add';
+
+/** The check-in's own accessible framing: the screen's name (visually the
+ * conversation speaks for itself, so the heading is screen-reader only), and
+ * what the progress rail announces. The rail carries no numeral visually, and
+ * it counts CATEGORIES — the unit it actually measures — never questions,
+ * whose total she was never promised. */
+export const CHECK_IN_SCREEN_TITLE = 'Check in';
+export const CHECK_IN_PROGRESS_LABEL = 'Check-in progress';
+export function checkInProgressValueText(answered: number, total: number): string {
+  return `${answered} of ${total} answered`;
+}
+
+/** 05 — the composer. */
+export const COMPOSER_PLACEHOLDER = 'Type here';
+export const COMPOSER_SKIP_LABEL = 'Skip this';
+export const COMPOSER_SEND_LABEL = 'Send';
+
+/** 06 — review. */
+export const REVIEW_TITLE = 'Check everything';
+export const REVIEW_LEAD = 'This is what goes to your clinic. You can change any answer.';
+export const REVIEW_FREE_TEXT_LABEL = 'In your own words';
+export const REVIEW_SEND_LABEL = 'Send this to your clinic';
+export const REVIEW_SEND_NOTE = "A midwife reads it. If it can't wait, call instead.";
+
+/** 07 — the emergency outcome. */
+export const OUTCOME_EMERGENCY_TITLE = 'Please call paramedics now.';
+
+/**
+ * The one sentence that tells the call handler who she is, built from what
+ * she actually gave us rather than hard-coded. Gestation always; then the
+ * single most urgent thing she flagged, in her own categories' words. Never
+ * a diagnosis, never a severity score — it is a handover line, not an
+ * assessment.
+ */
+export function emergencyHandoverLead(
+  gestationWeeks: number,
+  answers: CategoryAnswer[]
+): string {
+  const flagged = (id: string): boolean =>
+    answers.some((a) => a.categoryId === id && a.gateAnswer === 'yes');
+  const heavyBleeding =
+    flagged(BLEEDING_CATEGORY_ID) &&
+    answers.some((a) =>
+      a.followUpAnswers.some(
+        (f) =>
+          f.followUpId === BLEEDING_HOW_MUCH_FOLLOWUP_ID &&
+          f.value.type === 'select' &&
+          HEAVY_BLEEDING_VALUES.includes(f.value.value)
+      )
+    );
+
+  const opening = `Tell them you are ${gestationWeeks} weeks pregnant`;
+  if (heavyBleeding) {
+    return `${opening} and bleeding heavily.`;
+  }
+  if (flagged(BLEEDING_CATEGORY_ID)) {
+    return `${opening} and bleeding.`;
+  }
+  if (flagged(COLLAPSE_CATEGORY_ID)) {
+    return `${opening} and tell them what happened.`;
+  }
+  return `${opening} and tell them what you told Kindred.`;
+}
+
+export const OUTCOME_EMERGENCY_ADVICE =
+  'Stay where you are, lie on your left side, and unlock the front door if you can.';
+
+/**
+ * Names where the report has already gone, so she does not have to explain it
+ * twice. Factual, and never a promise about what happens next.
+ *
+ * IT USED TO END "They know you are calling." That sentence was cut: there is
+ * no acknowledgement channel, no receipt, and no mechanism by which the clinic
+ * could know she is about to dial 999 — and this string is rendered on the
+ * emergency screen, which is the one place in the product where a false
+ * reassurance costs the most. What the app knows is that her answers were
+ * sent. It says that, and stops.
+ */
+export function outcomeReportSentNote(clinicName: string): string {
+  return `Your answers have gone to ${clinicName}.`;
+}
+
+// ---------------------------------------------------------------------------
+// 07 — the other two outcome states (handoff README draws the emergency tier
+// only; the triage tier and the routine state are the same composition with
+// different content — see src/screens/Outcome.tsx).
+//
+// WHAT THE ROUTINE STATE IS ALLOWED TO SAY. Only what the app can stand
+// behind: that she pressed Send, when, and when her clinic is open. It used to
+// assert "Received by your clinic" and "Clinician reviewing" as timeline rows
+// and "Your report is in their queue." as prose — three claims about a third
+// party's system that nothing in this app confirms (`submitReport()` sets
+// local React state; there is no transport). All three are gone rather than
+// softened, because a softer wording would still be a claim.
+// ---------------------------------------------------------------------------
+
+/** The triage tier's title. Not "Please call 999 now." — in this tier 999 is
+ * the quiet secondary route, not the number on the pill, and a title naming a
+ * number she is not being asked to ring first would be actively wrong. */
+export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
+
+/** The triage tier's lead. It used to be the resolved contact's own `reason`
+ * ("Your clinic is open now, call this number."), which named a route that no
+ * longer exists. This says what is true instead. */
+export const OUTCOME_ESCALATE_TRIAGE_LEAD =
+  'Something you have told us needs looking at now.';
+
+export const OUTCOME_DOWNLOAD_ESCALATE_LABEL = 'Download your report to bring with you';
+export const OUTCOME_DOWNLOAD_ROUTINE_LABEL = 'Download your report';
+
+/** The routine state's title once she has pressed Send. */
+export const OUTCOME_ROUTINE_TITLE = 'Sent to your clinic';
+/** …and when this screen is reached with nothing submitted (a direct visit to
+ * /outcome, which is a real route). Nothing was sent, so nothing is claimed —
+ * the screen names the clinic and states its hours, and that is all. */
+export const OUTCOME_ROUTINE_NO_SUBMISSION_TITLE = 'Your clinic';
+
+/** The one thing the app witnessed: she pressed Send, at this time. */
+export function outcomeRoutineSentLead(clinicName: string, sentClock: string): string {
+  return `Sent to ${clinicName} at ${sentClock}.`;
+}
+
+/** The clinic's hours, and nothing about what anyone there is doing. */
+export function outcomeRoutineClinicHours(
+  clinicName: string,
+  clinicOpen: boolean,
+  clinicOpensAt: string
+): string {
+  return clinicOpen ? `${clinicName} is open now.` : `${clinicName} opens at ${clinicOpensAt}.`;
+}
+
+export function outcomeRoutineWaitNote(contactLabel: string): string {
+  return `If anything changes, ${lowerFirstWord(
+    CHECK_IN_CONTROL_LABEL
+  )} again or call ${contactLabel}.`;
+}
+
+/** The routine state's plain (never red, never EmergencyCall) call row. */
+export function outcomeCallContactLabel(contactLabel: string): string {
+  return `Call ${contactLabel}`;
+}
+
+/** Lowercases the first word of a schema-authored label so it can sit
+ * mid-sentence. Only ever applied to copy in this file, never to anything she
+ * typed. */
+function lowerFirstWord(value: string): string {
+  return value.length > 0 ? value.charAt(0).toLowerCase() + value.slice(1) : value;
+}
+
+// ---------------------------------------------------------------------------
+// The triage-contact sentence (src/logic/triageContact.ts resolves WHICH
+// contact; the words she reads are authored here). It is rendered as the
+// outcome screen's `lead` paragraph — the largest body copy on that screen —
+// so it belongs with the rest of the voice rather than inside a routing
+// function with unit tests attached.
+// ---------------------------------------------------------------------------
+
+export function triageContactReason(
+  kind: TriageContact['kind'],
+  clinicOpensAt: string
+): string {
+  return kind === 'clinic'
+    ? 'Your clinic is open now, call this number.'
+    : `Your clinic is closed until ${clinicOpensAt}, call the maternity unit instead.`;
+}
+
+/** 08 — live view. */
+export const LIVE_VIEW_TITLE = 'Live view';
+export const LIVE_VIEW_UNIT_CAPTION = "kicks in the last full hour";
+export const LIVE_VIEW_TRACE_START_LABEL = '12 hours ago';
+
+export function liveViewSessionCaption(sinceClock: string): string {
+  return `Listening since ${sinceClock}. The band is connected.`;
+}
+
+/** 08 — the session ring's control. It is a toggle, not two controls, so it
+ * carries one name in both states (see SessionRing.tsx). */
+export const LIVE_VIEW_PAUSE_LABEL = 'Pause listening';
+
+// ---------------------------------------------------------------------------
+// Voice notes (handoff README §05). These name an object and two controls in
+// the interface; they are still words she reads, so they live here.
+// ---------------------------------------------------------------------------
+
+export const VOICE_NOTE_LABEL = 'Voice note';
+export const VOICE_NOTE_RECORD_AGAIN_LABEL = 'Record again';
+export const VOICE_NOTE_DELETE_LABEL = 'Delete';
+/** Accessible names for the recorder and the player — a control must say what
+ * it does. */
+export const VOICE_NOTE_RECORD_ACCESSIBLE_LABEL = 'Record a voice note';
+export const VOICE_NOTE_STOP_ACCESSIBLE_LABEL = 'Stop recording';
+export const VOICE_NOTE_PLAY_ACCESSIBLE_LABEL = 'Play voice note';
+export const VOICE_NOTE_PAUSE_ACCESSIBLE_LABEL = 'Pause voice note';
+
+// ---------------------------------------------------------------------------
+// Navigation. Structural rather than clinical — the caret names a control and
+// says nothing to her — but it is one word appearing on four screens, so it is
+// defined once rather than four times.
+// ---------------------------------------------------------------------------
+
+export const BACK_LABEL = 'Back';
+
+// ---------------------------------------------------------------------------
+// Onboarding (src/screens/Onboarding.tsx and src/screens/onboarding/*).
+//
+// Onboarding is not one of the eight handoff screens, but the rule as stated
+// is "all patient-facing copy", with no carve-out — and this file already owns
+// the onboarding QUESTIONS (`onboardingQuestions`, above), so the questions and
+// the chrome that presents them were split across two locations. They are one
+// location now. Same voice rules as everything above: second person, sentence
+// case, no exclamation mark, no uppercase, never the word "detected".
+// ---------------------------------------------------------------------------
+
+export const ONBOARDING_CONTINUE_LABEL = 'Continue';
+export const ONBOARDING_PROGRESS_LABEL = 'Setup progress';
+/** Plain language rather than the percentage a screen reader would otherwise
+ * compute for a rail whose whole point is that it never shows one — the same
+ * treatment `checkInProgressValueText` gives the check-in's rail. */
+export function onboardingProgressValueText(answered: number, total: number): string {
+  return `${answered} of ${total} answered`;
+}
+
+export const ONBOARDING_MULTI_SELECT_HINT = 'Select all that apply.';
+export const ONBOARDING_OPTIONAL_DETAIL_LABEL = 'Anything you’d like to add (optional)';
+export const ONBOARDING_OPTIONAL_DETAIL_PLACEHOLDER =
+  'Share as much or as little as you want';
+export const ONBOARDING_WEEKS_UNIT = 'weeks';
+
+export const NOT_SURE_LABEL = 'Not sure';
+export const YES_NO_UNSURE_OPTIONS: readonly { value: YesNoUnsure; label: string }[] = [
+  { value: 'yes', label: YES_LABEL },
+  { value: 'no', label: NO_LABEL },
+  { value: 'not-sure', label: NOT_SURE_LABEL },
+];
+
+/** The closing pairing beat. Both lines are about the hardware and make no
+ * claim about her or the baby. */
+export const ONBOARDING_PAIRING_TITLE = 'Your band is paired.';
+export const ONBOARDING_PAIRING_BODY =
+  'It sends your movement data to Kindred while you wear it.';
 
 // ---------------------------------------------------------------------------
 // Patient fixture

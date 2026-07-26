@@ -16,6 +16,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { setBandSignal } from '../sensors/MovementStream';
 import type {
   ActivityVariant,
   CategoryAnswer,
@@ -24,21 +25,16 @@ import type {
   VoiceNote,
 } from '../types';
 
-/** The ambient background wash's iteration — design-plan.md §13.8.
- * 'off' renders nothing; 'hearth' / 'room' select iteration A / B. */
-export type AmbientBackground = 'off' | 'hearth' | 'room';
-
 export type ReportSubmissionStatus = 'idle' | 'submitted';
+
+/** The two phases of the check-in flow. `conversation` covers handoff
+ * screens 03-05; `review` is screen 06. Held here rather than inside
+ * TriageFlow because the shared dock needs to see it. */
+export type TriagePhase = 'conversation' | 'review';
 
 export interface ReportSubmission {
   status: ReportSubmissionStatus;
   submittedAt: Date | null;
-  /** True when this submission was fired by the hard-stop interrupt (held-
-   * build-brief.md placeholder_content, "Hard-stop rule") rather than by
-   * pressing Send on the review screen — review was skipped, and any
-   * category not yet answered was genuinely never reached. Read by
-   * src/screens/reportAssembly.ts to set ReportData.hardStopEndedEarly. */
-  hardStopEndedEarly: boolean;
 }
 
 const initialOnboardingAnswers: OnboardingAnswers = {
@@ -50,7 +46,6 @@ const initialOnboardingAnswers: OnboardingAnswers = {
 const initialReportSubmission: ReportSubmission = {
   status: 'idle',
   submittedAt: null,
-  hardStopEndedEarly: false,
 };
 
 /** Revokes a VoiceNote's object URL, if it has one. The demo panel's
@@ -76,10 +71,6 @@ export interface AppState {
   activityVariant: ActivityVariant;
   setActivityVariant: (variant: ActivityVariant) => void;
 
-  /** The ambient background wash — design-plan.md §13.8. Default 'hearth'. */
-  ambientBackground: AmbientBackground;
-  setAmbientBackground: (value: AmbientBackground) => void;
-
   /** How the current triage flow was entered. */
   entryPath: EntryPath;
   setEntryPath: (path: EntryPath) => void;
@@ -87,6 +78,19 @@ export interface AppState {
   /** Whether Home shows its alert state. */
   alertActive: boolean;
   setAlertActive: (active: boolean) => void;
+
+  /** The band has no signal (handoff README, screen 01's offline variant).
+   * Swaps the live-data card's number row and trace for the no-signal
+   * block. Absence is absence: nothing is drawn in place of the data. */
+  bandOffline: boolean;
+  setBandOffline: (offline: boolean) => void;
+
+  /** Which phase of the check-in she is in. Lifted out of TriageFlow so the
+   * dock — mounted once above the router (src/components/Dock.tsx) — can
+   * derive what it shows without the triage screen having to reach up and
+   * register anything. See that file's header comment. */
+  triagePhase: TriagePhase;
+  setTriagePhase: (phase: TriagePhase) => void;
 
   onboardingAnswers: OnboardingAnswers;
   setOnboardingAnswers: (answers: OnboardingAnswers) => void;
@@ -105,10 +109,7 @@ export interface AppState {
   setTriageVoiceNote: (note: VoiceNote | null) => void;
 
   reportSubmission: ReportSubmission;
-  /** `endedEarly: true` marks this submission as fired by the hard-stop
-   * interrupt rather than the review screen's Send (held-build-brief.md
-   * placeholder_content, "Hard-stop rule") — see ReportSubmission above. */
-  submitReport: (options?: { endedEarly?: boolean }) => void;
+  submitReport: () => void;
 
   /** Restores everything to a clean demo start. */
   resetState: () => void;
@@ -119,9 +120,18 @@ const AppStateContext = createContext<AppState | null>(null);
 export function AppStateProvider({ children }: { children: ReactNode }): ReactElement {
   const [clockOverride, setClockOverride] = useState<Date | null>(null);
   const [activityVariant, setActivityVariant] = useState<ActivityVariant>('active');
-  const [ambientBackground, setAmbientBackground] = useState<AmbientBackground>('hearth');
   const [entryPath, setEntryPath] = useState<EntryPath>(null);
   const [alertActive, setAlertActive] = useState<boolean>(false);
+  const [bandOffline, setBandOfflineState] = useState<boolean>(false);
+
+  // The sensor boundary owns whether the band is reporting; app state holds
+  // the same fact only so React re-renders when it changes. Kept in step
+  // here, in the one setter, rather than by any screen.
+  const setBandOffline = useCallback((offline: boolean): void => {
+    setBandSignal(!offline);
+    setBandOfflineState(offline);
+  }, []);
+  const [triagePhase, setTriagePhase] = useState<TriagePhase>('conversation');
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>(
     initialOnboardingAnswers
   );
@@ -135,11 +145,10 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
   const now = useCallback((): Date => clockOverride ?? new Date(), [clockOverride]);
 
   const submitReport = useCallback(
-    (options?: { endedEarly?: boolean }): void => {
+    (): void => {
       setReportSubmission({
         status: 'submitted',
         submittedAt: now(),
-        hardStopEndedEarly: options?.endedEarly ?? false,
       });
     },
     [now]
@@ -160,9 +169,11 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
     });
     setClockOverride(null);
     setActivityVariant('active');
-    setAmbientBackground('hearth');
     setEntryPath(null);
     setAlertActive(false);
+    setBandSignal(true);
+    setBandOfflineState(false);
+    setTriagePhase('conversation');
     setOnboardingAnswers(initialOnboardingAnswers);
     setTriageDescription('');
     setReportSubmission(initialReportSubmission);
@@ -175,12 +186,14 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
       now,
       activityVariant,
       setActivityVariant,
-      ambientBackground,
-      setAmbientBackground,
       entryPath,
       setEntryPath,
       alertActive,
       setAlertActive,
+      bandOffline,
+      setBandOffline,
+      triagePhase,
+      setTriagePhase,
       onboardingAnswers,
       setOnboardingAnswers,
       categoryAnswers,
@@ -197,9 +210,11 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
       clockOverride,
       now,
       activityVariant,
-      ambientBackground,
       entryPath,
       alertActive,
+      bandOffline,
+      setBandOffline,
+      triagePhase,
       onboardingAnswers,
       categoryAnswers,
       triageDescription,

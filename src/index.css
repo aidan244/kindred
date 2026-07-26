@@ -105,16 +105,206 @@
   }
 }
 
+/* --------------------------------------------------------------------------
+ * The aura orb — one centred, slowly turning presence.
+ *
+ * Every layer is anchored with left/top + `translate(-50%,-50%)`, so that
+ * centring is baked into every keyframe stop; the animated case and the
+ * held-static (reduced motion) case then agree on the same rest position.
+ *
+ * TRAVEL AND SIZE ARE IN VIEWPORT UNITS, NOT PERCENTAGES. A percentage
+ * translate resolves against the element's OWN box, so when the layers were
+ * sized as a percentage of the viewport the whole composition's travel
+ * shrank with the window — at 390px wide the blooms drifted 3.7-5.9x less
+ * far than on a desktop, which is why the effect was invisible on a phone.
+ * `vmin` makes both the circle and its motion identical at every aspect
+ * ratio.
+ *
+ * The rings turn rather than drift, and turn against each other. Rotation
+ * on a slightly elliptical ring is what reads as a living instrument rather
+ * than a gradient; counter-rotation is what stops the pair reading as one
+ * rigid object. Both periods are minutes long, so nothing ever appears to
+ * spin — it is closer to watching a tide than a dial.
+ * ------------------------------------------------------------------------ */
+@keyframes orb-core {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) translate(0.6vmin, -1vmin) scale(1.07);
+  }
+}
+
+@keyframes orb-ring-1 {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.05);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+}
+
+/* Counter-turning, and shrinking where ring 1 grows. */
+@keyframes orb-ring-2 {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.03);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(-180deg) scale(0.97);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg) scale(1.03);
+  }
+}
+
+/* The soft ground the orb sits in. Barely moves; it exists so the orb is a
+ * light in a room rather than a spotlight in a void. */
+@keyframes orb-field {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) translate(-1.2vmin, 0.8vmin) scale(1.06);
+  }
+}
+
+/*
+ * The brightness breath, running on each layer on its own period.
+ *
+ * Turning and scaling alone do not read as breathing — a blurred form moving
+ * behind content is just a form moving. What the eye reads as breath is
+ * light swelling and settling, which is this. Giving each layer a different
+ * breath period, none of them matching its own rotation period, is what
+ * keeps the orb from resolving into a single repeating cycle.
+ *
+ * Peak is opacity 1, i.e. the layer's designed alpha from tokens.css: the
+ * breath only ever dims. That is deliberate and load-bearing, not caution —
+ * those alphas sit at the contrast ceiling (night's give --text-muted
+ * 4.73:1, and the next step up fails at 3.90:1), so a breath that brightened
+ * past them would break the contrast floor twice a minute in the state she
+ * is most likely to open the app in.
+ */
+@keyframes aura-breath {
+  0%,
+  100% {
+    opacity: var(--aura-breath-trough);
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Route transitions — handoff README, "page_transitions". One visual
+ * language for the whole app: opacity plus a short directional slide, off
+ * the trailing edge going forward and reversed going back. No scale, no
+ * spring, no cross-dissolve — only the ARRIVING screen animates.
+ * ------------------------------------------------------------------------ */
+@keyframes route-in-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--route-slide), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes route-in-back {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(-1 * var(--route-slide)), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Reduced motion's replacement: the same arrival, opacity only. */
+@keyframes route-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The conversation's own entrance (bubbles and chips), staggered by the
+ * caller. Fires once per element, never on re-render — see Beat.tsx. */
+@keyframes beat-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 /* `tap` — minimum touch target. Every interactive element carries it. */
 @utility tap {
   min-height: var(--tap-min);
   min-width: var(--tap-min);
 }
 
-/* `dock-safe` — bottom padding that clears the docked CheckInControl.
- * Every scrolling screen carries it on its scroll container. */
+/* `dock-safe` / `dock-safe-tall` — bottom padding that clears the docked
+ * control stack. Every scrolling screen carries one, and content must never
+ * enter the clearance (handoff README, invariants).
+ *
+ * MEASURED FIRST, CONSTANT SECOND. `--dock-height` is published by `DockHost`
+ * (src/components/Dock.tsx) from the dock rectangle's real height, and each
+ * utility takes the max of that against a static floor. A constant on its own
+ * cannot hold this invariant:
+ *
+ *   - the README states one number, "dock clearance 112px", and the standard
+ *     dock has since grown an operator row that number predates. It measures
+ *     60 (CheckInControl) + 4 (gap-1) + 56 (OperatorCall) + 16 (bottom pad) =
+ *     136px at the default text size, so the last 24px of every non-triage
+ *     screen already sat under a solid, shadowed accent pill;
+ *   - at 200% text the children grow (a wrapping label, doubled paddings) and
+ *     a px constant does not grow with them at all.
+ *
+ * The static floors are the fallback for anywhere `ResizeObserver` does not
+ * exist, and they are stated as arithmetic rather than as magic numbers. The
+ * tall floor in particular is NOT a README figure — the README gives 112 and
+ * only 112 — it is the triage dock's own stack: 48px of top padding (which
+ * runs the `to top, bg 66%` fade), the 64px emergency pill, 12px, the 56px
+ * 999 note row, 12px, the 56px operator row, 16px of bottom padding. */
 @utility dock-safe {
-  padding-bottom: calc(var(--dock-clearance) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(
+    calc(var(--dock-clearance) + env(safe-area-inset-bottom, 0px)),
+    var(--dock-height, 0px)
+  );
+}
+
+@utility dock-safe-tall {
+  padding-bottom: max(
+    calc(48px + 64px + 12px + 56px + 12px + 56px + 16px + env(safe-area-inset-bottom, 0px)),
+    var(--dock-height, 0px)
+  );
+}
+
+/* `press` — the ONE press feedback in the product (handoff README,
+ * motion_and_accessibility): opacity to 0.82 over 120ms. No scale, no
+ * colour change. Every interactive element carries it except the emergency
+ * and operator call controls, which never animate at all. */
+@utility press {
+  transition-property: opacity;
+  transition-duration: var(--dur-press);
+  transition-timing-function: linear;
+
+  &:active {
+    opacity: 0.82;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -186,5 +376,30 @@ p {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Two deliberate exemptions from the blanket collapse above, both from
+   * the handoff README's reduced-motion rules.
+   *
+   * `data-reduced-keep` — the aura and the breath glows are HELD STATIC,
+   * not removed. They branch to `animation: none` in JS (see Aura.tsx and
+   * usePrefersReducedMotion), which the rule above would otherwise be
+   * irrelevant to; this attribute exists so those elements can never be
+   * accidentally re-animated at 0.01ms, which would strobe rather than
+   * calm.
+   *
+   * `data-reduced-fade` — screen transitions drop to a <=120ms opacity
+   * fade rather than vanishing entirely, so arriving somewhere new still
+   * reads as an arrival. `--dur-press` is 120ms.
+   *
+   * An attribute selector (0,1,0) outranks the universal selector (0,0,0),
+   * so these win the !important contest without needing to be broader. */
+  [data-reduced-keep] {
+    animation: none !important;
+  }
+
+  [data-reduced-fade] {
+    animation-duration: var(--dur-press) !important;
+    animation-iteration-count: 1 !important;
   }
 }

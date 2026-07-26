@@ -63,8 +63,16 @@ export function KindredAvatar({ size = 104, className }: KindredAvatarProps): Re
       className={`relative flex items-center justify-center${className ? ` ${className}` : ''}`}
       style={{ width: size, height: size }}
     >
+      {/* `data-reduced-keep` matches Aura, SessionRing and PairingStep. The
+          stylesheet (src/index.css) documents it as the guard that stops the
+          global reduced-motion rule from ever re-animating a held-static
+          element at 0.01ms, which would strobe rather than calm. Dropping the
+          animation class alone happens to be enough TODAY — with no
+          animation-name there is nothing to clamp — but that is a property of
+          this markup, not a rule. */}
       <div
         aria-hidden="true"
+        data-reduced-keep={reduced ? '' : undefined}
         className={`absolute rounded-full ${reduced ? '' : 'animate-breath'}`}
         style={{
           width: glowSize,

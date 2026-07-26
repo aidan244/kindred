@@ -53,7 +53,11 @@
   --tap-min: 56px; /* she may be shaking; nothing smaller is tappable */
   --gutter: 24px; /* screen side padding at 390px */
   --content-max: 420px; /* content never sprawls wider than this */
-  --dock-clearance: 112px; /* bottom padding every scrolling screen reserves */
+  /* The README's one stated clearance. It is now a FLOOR rather than the
+   * answer: `dock-safe` (src/index.css) takes the max of this and the dock's
+   * measured height, because the standard dock has grown an operator row this
+   * number predates and because no px constant scales with her text size. */
+  --dock-clearance: 112px;
 
   /* Motion: slow and ambient. Nothing ticks, pulses, counts or races. --- */
   --dur-press: 120ms; /* opacity-only press feedback */
@@ -61,7 +65,16 @@
   --dur-enter: 420ms; /* element or sheet entrance */
   --dur-settle: 900ms; /* something coming to rest */
   --dur-breath: 9s; /* the canonical ambient breath cycle */
-  --dur-ring: 7.5s; /* live-view movement ring lifetime */
+  /* The README's motion table lists "breath 9s, ring 7.5s". `--dur-breath`
+   * drives `animate-breath` (the avatar, the pairing mark, the recording ring,
+   * the session ring's glow). `--dur-ring` HAS NO SURFACE IN THIS BUILD: the
+   * component it was written for — the old LiveSurface movement rings — was
+   * deleted in the handoff rewrite, and the README's session ring carries no
+   * animation of its own (it is a static arc; only its glow breathes). Kept so
+   * the motion table is complete and a future ring does not invent a fourth
+   * duration, but nothing reads it. Do not wire it up to the session ring:
+   * that ring must never appear to race or complete. */
+  --dur-ring: 7.5s;
 
   /* Exposed to Tailwind as ease-soft / ease-breath (see @theme). */
   --ease-soft-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* entrances; no overshoot */
@@ -116,6 +129,47 @@
 
   /* The silent pause between conversational messages (§14.5). */
   --dur-beat: 700ms;
+
+  /* Aura drift periods.
+   *
+   * DELIBERATE DEPARTURE FROM THE HANDOFF README, ON REQUEST. The README
+   * tabulates 46/61/74/67/53s. At those periods a half-cycle runs 23-37
+   * seconds, which under 34-58px of blur is below the threshold at which a
+   * person perceives motion at all — the backdrop is genuinely drifting and
+   * reads as a still image. The brief asked for a backdrop that visibly
+   * breathes, so the periods are ~2.5x faster here and the keyframe travel
+   * is 1.8x further (src/index.css). Everything else about the composition —
+   * the five blooms, their sizes, positions, fills, blurs and easing — is
+   * still the README's table verbatim.
+   *
+   * Still pairwise non-multiple, so the composite never visibly loops. */
+  --dur-orb-core: 16s;
+  --dur-orb-ring-1: 120s;
+  --dur-orb-ring-2: 150s;
+  --dur-orb-field: 44s;
+
+  /* Aura breath periods — the brightness pulse that runs alongside the
+   * drift. Deliberately NOT the drift periods: two loops of different length
+   * on the same element is what stops the aura reading as one mechanical
+   * cycle. Each is coprime-ish with its own bloom's drift period, so a bloom
+   * is rarely at the same point of both loops twice. */
+  --dur-aura-breath-core: 13s;
+  --dur-aura-breath-ring-1: 17s;
+  --dur-aura-breath-ring-2: 23s;
+  --dur-aura-breath-field: 19s;
+
+  /* How far down from its designed alpha a bloom dims at the bottom of its
+   * breath. The breath only ever REDUCES a bloom's presence — the designed
+   * alpha in the theme blocks below is the contrast-verified ceiling and is
+   * never exceeded, so this can never push body text under 4.5:1. Trough to
+   * peak is a ~43% swing in light, which is what makes it legible as
+   * breathing rather than as flicker. */
+  --aura-breath-trough: 0.55;
+
+  /* Route transition — handoff README "page_transitions". One visual
+   * language for the whole app: opacity plus a short directional slide. */
+  --dur-route: 320ms;
+  --route-slide: 14px; /* inside the README's 12-16px band */
 }
 
 /* --------------------------------------------------------------------------
@@ -130,7 +184,10 @@
   --surface-hi: #352b30;
 
   --text: #f4ede8; /* 15.38:1 on bg */
-  --text-muted: #bbaa9c; /*  7.93:1 on bg  (was #b3a3a8; see design-plan.md) */
+  --text-muted: #bbaa9c; /*  7.93:1 on bg; 4.80:1 at the worst point of the
+                          * aura composite (see the note on the alphas
+                          * below). Unchanged — night needed no text change
+                          * to carry a brighter aura, only smaller blooms. */
   --accent: #e8b478; /*  9.53:1 on bg — the lamp */
   --emergency: #e85b50; /*  5.13:1 on bg  (was #e5544b; see design-plan.md) */
 
@@ -155,6 +212,26 @@
   --wash-a2: 0.1;
   --wash-a3: 0.14;
   --wash-a4: 0.22;
+
+  /* Aura orb — night. ----------------------------------------------------
+   * One centred orb, not the README's five scattered blooms — see the
+   * header comment on src/components/Aura.tsx for why the composition
+   * changed and what it fixed.
+   *
+   * At night every layer is the lamp itself: a warm core in an unlit room,
+   * with two concentric rings around it. ALPHAS ARE AT THE CONTRAST
+   * CEILING, found by compositing the real circles over a 390x844 viewport
+   * at both ends of the breath and taking the worst text contrast anywhere
+   * in the field. These give 4.73:1 for --text-muted; the next step up
+   * (0.11/0.15/0.19/0.24) lands at 3.90:1 and fails. */
+  --aura-core-rgb: var(--accent-rgb);
+  --aura-core-a: 0.18;
+  --aura-ring-1-rgb: var(--accent-rgb);
+  --aura-ring-1-a: 0.14;
+  --aura-ring-2-rgb: var(--accent-rgb);
+  --aura-ring-2-a: 0.11;
+  --aura-field-rgb: var(--accent-rgb);
+  --aura-field-a: 0.08;
 }
 
 /* --------------------------------------------------------------------------
@@ -169,7 +246,19 @@
   --surface-hi: #fbf6f1;
 
   --text: #2a2226; /* 12.60:1 on bg */
-  --text-muted: #665a60; /*  5.34:1 on bg */
+  /* 5.99:1 on bg, and 4.71:1 at the worst point of the aura composite.
+   *
+   * CORRECTS A REAL FAILURE, not a preference. At #665a60 this measured
+   * 5.34:1 on bare bg but only 4.05:1 at the worst point of the day aura —
+   * i.e. timestamps, metadata and device state fell below the 4.5:1 floor
+   * wherever the lower blooms overlap. The handoff README asks for both
+   * "the blooms exactly as tabulated" and "all body text at or above 4.5:1
+   * on top of it", and its own day numbers cannot satisfy both at the old
+   * value. The blooms are the design; the floor is a requirement; so the
+   * text moved, by the smallest step that clears it.
+   *
+   * Night needed no equivalent change — see its --text-muted. */
+  --text-muted: #5c5156;
   --accent: #8a5717; /*  4.94:1 on bg  (was #96601f; see design-plan.md) */
   --emergency: #b3302a; /*  5.06:1 on bg */
 
@@ -196,4 +285,24 @@
   --wash-a2: 0.14;
   --wash-a3: 0.2;
   --wash-a4: 0.26;
+
+  /* Aura orb — day. ------------------------------------------------------
+   * The core is a WARM WHITE here rather than the accent, which is not a
+   * stylistic difference — it is what the contrast budget pays for. Day
+   * text is dark on warm paper, so a layer that LIGHTENS the ground costs
+   * nothing (dark text on a lighter field only gains contrast) while the
+   * accent darkens it and is spent immediately. An accent core measured a
+   * 10.0 L* spread at the floor; a warm-white core with accent rings
+   * measures 14.4 with more margin left over.
+   *
+   * Same derivation as night: worst point of the composited field, at both
+   * ends of the breath. These give 4.92:1 for --text-muted. */
+  --aura-core-rgb: 255 251 243;
+  --aura-core-a: 0.92;
+  --aura-ring-1-rgb: var(--accent-rgb);
+  --aura-ring-1-a: 0.18;
+  --aura-ring-2-rgb: var(--accent-rgb);
+  --aura-ring-2-a: 0.14;
+  --aura-field-rgb: 255 251 243;
+  --aura-field-a: 0.10;
 }

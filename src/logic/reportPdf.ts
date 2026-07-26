@@ -148,8 +148,10 @@ interface ActivitySummary {
  * can't silently vanish from the total or throw on an out-of-range bucket
  * index.
  *
- * Pure and crash-safe on an empty `recentActivity` array (renders as 24
- * zeroed rows).
+ * Pure and crash-safe on an empty `recentActivity` array. The 24 pre-filled
+ * buckets are a bucketing convenience ONLY — a bucket with `samples: 0` is an
+ * hour the band did not report, not an hour of no movement, and
+ * `buildActivityParagraphs` is responsible for never printing one as data.
  */
 function summarizeActivity(
   recentActivity: ActivitySample[],
@@ -243,8 +245,8 @@ function buildEntryParagraphs(report: ReportData): string[] {
  * reads in the same sequence she was asked.
  *
  * Honest, not merely accurate, about categories she was never asked
- * (`hardStopEndedEarly`): a hard-stop interrupt means later categories were
- * never reached, which reads very differently on a clinical document from
+ * (`endedBeforeAllCategories`): a category nobody reached reads very
+ * differently on a clinical document from
  * "she was asked and said no" — conflating the two would be exactly the
  * kind of silent interpretation this report must not do.
  */
@@ -256,8 +258,8 @@ function buildRedFlagParagraphs(report: ReportData): string[] {
 
     if (!answer) {
       paragraphs.push(
-        report.hardStopEndedEarly
-          ? `${category.gateQuestion} - not asked — check-in ended early to show emergency contact`
+        report.endedBeforeAllCategories
+          ? `${category.gateQuestion} - not asked — the check-in did not reach this question`
           : `${category.gateQuestion} - not asked`
       );
       continue;
@@ -343,12 +345,43 @@ function buildHistoryParagraphs(report: ReportData): string[] {
   return paragraphs;
 }
 
+/**
+ * The one sentence this section prints when the band reported nothing at all.
+ * It names the hardware and stops — the same voice as the app's own
+ * band-offline copy, on the surface where getting this wrong costs the most.
+ * Local to this module rather than imported from src/data/clinicalContent.ts:
+ * that file is the PATIENT-facing voice, and this document is written for a
+ * clinician.
+ */
+const ACTIVITY_NO_DATA =
+  'No movement data was recorded from the wearable for this period.';
+
+/**
+ * ABSENCE IS ABSENCE, IN THE ONE ARTEFACT A CLINICIAN READS.
+ *
+ * This used to emit the summary line and then loop over all 24 buckets
+ * unconditionally, so an empty `recentActivity` printed "0 movements recorded
+ * across 0 samples" followed by 24 rows of "moved in 0 of 0 samples". That is
+ * a confirmed twenty-four hours of zero fetal movement, manufactured out of no
+ * data — the precise claim src/components/KickTrace.tsx refuses to draw
+ * on screen ("a flat line is a claim that nothing happened"), made in
+ * the document that goes to her clinic.
+ *
+ * Two rules now:
+ *  - no samples at all: one absence statement, no total, no table;
+ *  - an hour with no samples: no row. An hour the band did not report is not
+ *    an hour of stillness, and the two must not look alike in a list.
+ */
 function buildActivityParagraphs(report: ReportData): string[] {
   const summary = summarizeActivity(
     report.recentActivity,
     report.submittedAt,
     report.activityBaseline
   );
+
+  if (summary.totalSamples === 0) {
+    return [ACTIVITY_NO_DATA];
+  }
 
   const paragraphs: string[] = [
     `24-hour total: ${summary.totalMoved} movements recorded across ${summary.totalSamples} samples. Personal baseline: ${summary.baseline} movements.`,
@@ -357,6 +390,12 @@ function buildActivityParagraphs(report: ReportData): string[] {
   ];
 
   for (const bucket of summary.hourly) {
+    // An hour the band did not report is simply not listed. Printing
+    // "moved in 0 of 0 samples" would file "we have nothing" under the same
+    // heading as "she did not move".
+    if (bucket.samples === 0) {
+      continue;
+    }
     paragraphs.push(
       `${bucket.label}: moved in ${bucket.moved} of ${bucket.samples} samples`
     );

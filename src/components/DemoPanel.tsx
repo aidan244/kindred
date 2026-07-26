@@ -3,14 +3,24 @@
  * demo can't fail on flaky real-time/real-sensor conditions.
  *
  * Toggle: Ctrl+. (keyboard) or the small low-contrast dot in the bottom
- * right corner (pointer). Available as an overlay on every screen (mounted
- * once in src/components/Layout.tsx).
+ * right corner (pointer). Available as an overlay on every screen, mounted
+ * once in src/App.tsx — outside the router, next to the aura and the dock, so
+ * it survives navigation. (It used to be mounted in src/components/Layout.tsx;
+ * that file no longer exists.)
+ *
+ * NOT PATIENT-FACING, and the only surface in the product that is exempt from
+ * the copy rules — it is stage furniture, read by whoever is driving the demo.
+ * It is NOT exempt from the two safety invariants: no emergency red anywhere
+ * outside EmergencyCall, and no tick/check glyph anywhere at all. A toggle's
+ * on-state is an accent fill plus `aria-pressed`, never a tick.
+ *
+ * It does use the design tokens, because a panel drawn in raw greys sitting on
+ * top of the lamplit screens is how "old styling beside the new" gets back in.
  */
 
-import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactElement, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Microphone, SlidersHorizontal, X } from '@phosphor-icons/react';
-import type { AmbientBackground } from '../context/AppStateContext';
 import { useAppState } from '../context/AppStateContext';
 import { COLLAPSE_CATEGORY_ID, redFlagCategories } from '../data/clinicalContent';
 import { asInjectable, getMovementStream } from '../sensors/MovementStream';
@@ -38,12 +48,15 @@ function demoVoiceNote(): VoiceNote {
   };
 }
 
-/** design-plan.md §13.8 — the three mutually exclusive wash options. */
-const AMBIENT_BACKGROUND_OPTIONS: ReadonlyArray<{ value: AmbientBackground; label: string }> = [
-  { value: 'off', label: 'Off' },
-  { value: 'hearth', label: 'A: Hearth' },
-  { value: 'room', label: 'B: Room breath' },
-];
+/**
+ * The three-way "Ambient background" control that used to live here is GONE,
+ * along with the component it drove. The full-bleed wash (AmbientBackground.tsx,
+ * design-plan.md §13) has been replaced by the handoff README's aura backdrop
+ * — five drifting blooms, mounted once in App and not switchable — so there is
+ * nothing left for a toggle to choose between, and `ambientBackground` no
+ * longer exists in AppStateContext either. Its slot below is now the band's
+ * signal, which IS one of the README's own tweak props.
+ */
 
 interface ScreenLink {
   key: string;
@@ -89,6 +102,31 @@ function emergencyTierAnswers(): CategoryAnswer[] {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Panel chrome. Three shared class strings and one wrapper, so a dozen demo
+// controls cannot quietly drift into a dozen slightly different buttons — and
+// so every one of them is a real 56px target (`tap`) with the product's one
+// press feedback (`press`), on the product's own radii and surfaces.
+// ---------------------------------------------------------------------------
+
+/** A demo row: full width, 56px, chip radius, on the raised surface. */
+const ROW_CLASSES = 'press tap w-full rounded-chip bg-surface-hi px-3 py-2 text-left text-text';
+
+/** A two-state control's on/off skins. "On" is an accent fill plus
+ * `aria-pressed` — never a tick (there is no tick glyph in this product) and
+ * never the emergency red, which exists in EmergencyCall alone. */
+const TOGGLE_ON_CLASSES = 'press tap flex-1 rounded-chip bg-accent px-3 py-2 text-on-accent';
+const TOGGLE_OFF_CLASSES = 'press tap flex-1 rounded-chip bg-surface-hi px-3 py-2 text-text';
+
+function PanelSection({ title, children }: { title: string; children: ReactNode }): ReactElement {
+  return (
+    <section className="mb-4">
+      <h3 className="mb-2 text-caption text-text-muted">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
 function formatTimeForInput(date: Date): string {
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -111,8 +149,8 @@ export function DemoPanel(): ReactElement {
     setClockOverride,
     activityVariant,
     setActivityVariant,
-    ambientBackground,
-    setAmbientBackground,
+    bandOffline,
+    setBandOffline,
     setAlertActive,
     setEntryPath,
     categoryAnswers,
@@ -171,7 +209,7 @@ export function DemoPanel(): ReactElement {
       seed: () => {
         setEntryPath('adhoc');
         setCategoryAnswers(emergencyTierAnswers());
-        submitReport({ endedEarly: true });
+        submitReport();
       },
     },
     {
@@ -272,142 +310,126 @@ export function DemoPanel(): ReactElement {
     <>
       <PushBanner visible={isPushVisible} onOpen={handlePushOpen} />
 
+      {/* The way in on a touch device: a 56px target in the corner carrying a
+          10px dot at 30% opacity, so it is findable by someone who knows it is
+          there and invisible to everyone else. */}
       <button
         type="button"
         aria-label="Open demo control panel"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-0 right-0 z-40 flex h-14 w-14 items-center justify-center"
+        className="press tap fixed bottom-0 right-0 z-40 flex items-center justify-center"
       >
-        <span className="h-2.5 w-2.5 rounded-full bg-text-muted opacity-30" aria-hidden="true" />
+        <span className="h-2.5 w-2.5 rounded-pill bg-text-muted opacity-30" aria-hidden="true" />
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface p-4 text-text sm:rounded-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <SlidersHorizontal size={20} weight="light" aria-hidden="true" />
+        // The scrim is the theme's own, not a black wash: this sits on top of
+        // a warm room in both themes, and neutral black over it reads as a
+        // different product's modal.
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          style={{ background: 'var(--scrim)' }}
+        >
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-panel bg-surface p-4 text-text sm:rounded-panel">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-label text-text">
+                <SlidersHorizontal size={20} weight="light" aria-hidden="true" className="shrink-0" />
                 Demo controls
               </h2>
               <button
                 type="button"
                 aria-label="Close demo control panel"
                 onClick={() => setIsOpen(false)}
-                className="flex h-14 w-14 items-center justify-center rounded-full hover:bg-surface-hi"
+                className="press tap flex shrink-0 items-center justify-center rounded-pill"
               >
                 <X size={20} weight="light" aria-hidden="true" />
               </button>
             </div>
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Jump to screen
-              </h3>
+            <PanelSection title="Jump to screen">
               <div className="flex flex-col gap-2">
                 {screenLinks.map((link) => (
                   <button
                     key={link.key}
                     type="button"
                     onClick={() => goToScreen(link)}
-                    className="min-h-14 rounded-lg bg-surface-hi px-3 py-2 text-left hover:opacity-80"
+                    className={ROW_CLASSES}
                   >
                     {link.label}
                   </button>
                 ))}
               </div>
-            </section>
+            </PanelSection>
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Push notification
-              </h3>
+            <PanelSection title="Push notification">
               <button
                 type="button"
                 onClick={firePushNotification}
-                className="min-h-14 w-full rounded-lg bg-accent px-3 py-2 text-left text-bg hover:opacity-90"
+                className="press tap w-full rounded-chip bg-accent px-3 py-2 text-left text-on-accent"
               >
                 Fire push notification
               </button>
-            </section>
+            </PanelSection>
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Ambient background
-              </h3>
-              <div className="flex gap-2">
-                {AMBIENT_BACKGROUND_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setAmbientBackground(option.value)}
-                    aria-pressed={ambientBackground === option.value}
-                    className={`min-h-14 flex-1 rounded-lg px-3 py-2 ${
-                      ambientBackground === option.value ? 'bg-accent text-bg' : 'bg-surface-hi'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </section>
+            {/* The README's own `bandOffline` tweak prop. One switch, two
+                screens: Home's live-data card swaps to the no-signal block and
+                the live view drops to its no-signal state, because both read
+                the same sensor boundary that `setBandOffline` puts to sleep. */}
+            <PanelSection title="Band signal">
+              <button
+                type="button"
+                onClick={() => setBandOffline(!bandOffline)}
+                aria-pressed={bandOffline}
+                className={bandOffline ? TOGGLE_ON_CLASSES : TOGGLE_OFF_CLASSES}
+              >
+                Band has no signal
+              </button>
+              <p className="mt-2 text-caption text-text-muted">
+                Swaps Home&rsquo;s live-data card for the no-signal block, and puts the live view
+                into its no-signal state.
+              </p>
+            </PanelSection>
 
             {injectableMovementStream && (
-              <section className="mb-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                  Live movement
-                </h3>
+              <PanelSection title="Live movement">
                 <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={injectSingleSample}
-                    className="min-h-14 rounded-lg bg-surface-hi px-3 py-2 text-left hover:opacity-80"
-                  >
+                  <button type="button" onClick={injectSingleSample} className={ROW_CLASSES}>
                     Movement
-                    <span className="block text-sm text-text-muted">one sample now</span>
+                    <span className="block text-caption text-text-muted">one sample now</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={injectActiveSpell}
-                    className="min-h-14 rounded-lg bg-surface-hi px-3 py-2 text-left hover:opacity-80"
-                  >
+                  <button type="button" onClick={injectActiveSpell} className={ROW_CLASSES}>
                     Active spell
-                    <span className="block text-sm text-text-muted">7 samples over ~8 seconds</span>
+                    <span className="block text-caption text-text-muted">
+                      7 samples over ~8 seconds
+                    </span>
                   </button>
                 </div>
-              </section>
+              </PanelSection>
             )}
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Voice note
-              </h3>
+            <PanelSection title="Voice note">
               <button
                 type="button"
                 onClick={attachDemoVoiceNote}
-                className="flex min-h-14 w-full items-center gap-2 rounded-lg bg-surface-hi px-3 py-2 text-left hover:opacity-80"
+                className={`${ROW_CLASSES} flex items-center gap-2`}
               >
-                <Microphone size={18} weight="light" aria-hidden="true" />
+                <Microphone size={20} weight="light" aria-hidden="true" className="shrink-0" />
                 <span>
                   Attach a demo voice note
-                  <span className="block text-sm text-text-muted">
+                  <span className="block text-caption text-text-muted">
                     no microphone needed — attaches to the latest answer, or the closing note
                   </span>
                 </span>
               </button>
-            </section>
+            </PanelSection>
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Seeded activity data
-              </h3>
-              <div className="flex gap-2">
+            <PanelSection title="Seeded activity data">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setActivityVariant('quiet')}
                   aria-pressed={activityVariant === 'quiet'}
-                  className={`min-h-14 flex-1 rounded-lg px-3 py-2 ${
-                    activityVariant === 'quiet' ? 'bg-accent text-bg' : 'bg-surface-hi'
-                  }`}
+                  className={activityVariant === 'quiet' ? TOGGLE_ON_CLASSES : TOGGLE_OFF_CLASSES}
                 >
                   Quiet
                 </button>
@@ -415,20 +437,15 @@ export function DemoPanel(): ReactElement {
                   type="button"
                   onClick={() => setActivityVariant('active')}
                   aria-pressed={activityVariant === 'active'}
-                  className={`min-h-14 flex-1 rounded-lg px-3 py-2 ${
-                    activityVariant === 'active' ? 'bg-accent text-bg' : 'bg-surface-hi'
-                  }`}
+                  className={activityVariant === 'active' ? TOGGLE_ON_CLASSES : TOGGLE_OFF_CLASSES}
                 >
                   Active
                 </button>
               </div>
-            </section>
+            </PanelSection>
 
-            <section className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Clock override
-              </h3>
-              <p className="mb-2 text-sm text-text-muted">
+            <PanelSection title="Clock override">
+              <p className="mb-2 text-caption text-text-muted">
                 Now: {formatTimeForInput(now())}
                 {clockOverride ? ' (overridden)' : ' (real time)'}
               </p>
@@ -436,41 +453,41 @@ export function DemoPanel(): ReactElement {
                 <button
                   type="button"
                   onClick={() => setClockOverride(overrideAtHour(14))}
-                  className="min-h-14 flex-1 rounded-lg bg-surface-hi px-3 py-2"
+                  className={`${ROW_CLASSES} flex-1`}
                 >
                   2pm
                 </button>
                 <button
                   type="button"
                   onClick={() => setClockOverride(overrideAtHour(2))}
-                  className="min-h-14 flex-1 rounded-lg bg-surface-hi px-3 py-2"
+                  className={`${ROW_CLASSES} flex-1`}
                 >
                   2am
                 </button>
                 <button
                   type="button"
                   onClick={() => setClockOverride(null)}
-                  className="min-h-14 flex-1 rounded-lg bg-surface-hi px-3 py-2"
+                  className={`${ROW_CLASSES} flex-1`}
                 >
                   Real time
                 </button>
               </div>
-              <label className="flex items-center gap-2 text-sm text-text-muted">
+              <label className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
                 Custom time
                 <input
                   type="time"
                   onChange={handleTimeInputChange}
                   value={clockOverride ? formatTimeForInput(clockOverride) : ''}
-                  className="min-h-14 flex-1 rounded-lg bg-surface-hi px-3 py-2 text-text"
+                  className="tap flex-1 rounded-chip bg-surface-hi px-3 py-2 text-body text-text"
                 />
               </label>
-            </section>
+            </PanelSection>
 
             <section>
               <button
                 type="button"
                 onClick={resetState}
-                className="min-h-14 w-full rounded-lg border border-line bg-surface px-3 py-2 text-text hover:opacity-90"
+                className="press tap w-full rounded-chip border border-line bg-surface px-3 py-2 text-text"
               >
                 Reset state
               </button>

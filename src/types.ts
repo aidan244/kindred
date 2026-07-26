@@ -152,6 +152,36 @@ export interface ActivitySample {
   moved: boolean;
 }
 
+/**
+ * One interval's kick tally from the band (screens 01 and 08 — KickTrace).
+ * The band reports movement and kicks over the same link, so both live
+ * behind the one sensor boundary (src/sensors/MovementStream.ts).
+ *
+ * `kicks` is a COUNT OVER AN INTERVAL, not a value at an instant, and
+ * `timestamp` is the START of that interval. There is no
+ * "quality" or "confidence" field and no interpretation of any kind: the app
+ * draws the shape of this and stops. A window with no samples renders
+ * nothing at all — absence is absence (handoff README, invariants).
+ */
+export interface KickSample {
+  timestamp: Date;
+  kicks: number;
+}
+
+/**
+ * A window of kick tallies, plus where the completed intervals end.
+ *
+ * `settledIndex` is the last sample the band has confirmed; anything after
+ * it is still arriving and is drawn as the greyed incoming edge on the live
+ * view (handoff README, screen 08 — the gradient's hard switch at 62%, with
+ * the live-sample dot at the switch point). On a settled window
+ * (`getKickWindow`) it is simply the last index.
+ */
+export interface KickWindow {
+  samples: KickSample[];
+  settledIndex: number;
+}
+
 // ---------------------------------------------------------------------------
 // Triage outcome
 // ---------------------------------------------------------------------------
@@ -160,12 +190,15 @@ export interface TriageContact {
   label: string;
   number: string;
   reason: string;
-  /** Which kind of contact this is, so callers can render an accurate
-   * label instead of assuming: "Call the clinic" / "Call the unit" for
-   * `getTriageContact()`'s two results, or "Call 999" for the emergency-tier
-   * pseudo-contact a screen builds itself (src/screens/Outcome.tsx) — never
-   * returned by getTriageContact(), which never resolves to 999 (see that
-   * function's header comment). */
+  /**
+   * Which kind of contact this is.
+   *
+   * NOTHING DIALS THIS ANY MORE. Every call control in the product is "Call
+   * paramedics" on 999; `getTriageContact()` survives only to NAME a clinic
+   * in the report's "sent to" line and to set expectations about when it will
+   * be read. Kept as a field because those two uses still want to know which
+   * of the two it resolved to.
+   */
   kind: 'clinic' | 'unit' | 'emergency';
 }
 
@@ -175,13 +208,19 @@ export interface ReportData {
   entryPath: EntryPath;
   submittedAt: Date;
   categoryAnswers: CategoryAnswer[];
-  /** True when this report was submitted by the hard-stop interrupt (held-
-   * build-brief.md placeholder_content, "Hard-stop rule") rather than by
-   * pressing Send on the review screen. When true, any category with no
-   * entry in `categoryAnswers` was genuinely never reached — the report
-   * must say so plainly rather than implying it was silently skipped or
-   * answered no (src/logic/reportPdf.ts). */
-  hardStopEndedEarly: boolean;
+  /**
+   * True when at least one category has no entry in `categoryAnswers` — the
+   * check-in did not cover everything before it was sent.
+   *
+   * DERIVED, NEVER ASSERTED (src/screens/reportAssembly.ts). It used to be a
+   * flag set by the hard-stop interrupt, which could end a check-in
+   * mid-questionnaire; that interrupt was removed, so nothing sets it any
+   * more — but a report that silently prints "no" for a question nobody
+   * asked is the one failure mode this document cannot have, so the
+   * distinction is now computed from the answers themselves and cannot fall
+   * out of step with them.
+   */
+  endedBeforeAllCategories: boolean;
   freeTextDescription: string;
   /** A voice note attached to the closing free-text beat, if any
    * (design-plan.md §15.6). Never attached to a specific category — those
