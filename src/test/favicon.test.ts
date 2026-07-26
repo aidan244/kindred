@@ -41,18 +41,22 @@ function normalise(pathData: string): string {
   return pathData.replace(/\s+/g, ' ').trim();
 }
 
-/** The `--accent` declared inside one theme block. Comments are stripped first
- * so a value merely NAMED in prose cannot satisfy the assertion. */
-function themeAccent(selector: string): string {
+/** One custom property's value inside one theme block of tokens.css. Comments
+ * are stripped first so a value merely NAMED in prose cannot satisfy the
+ * assertion. */
+function themeToken(selector: string, property: string): string {
   const withoutComments = tokens.replace(/\/\*[\s\S]*?\*\//g, '');
   const start = withoutComments.indexOf(selector);
   expect(start, `theme block not found: ${selector}`).toBeGreaterThan(-1);
   const open = withoutComments.indexOf('{', start);
   const block = withoutComments.slice(open + 1, withoutComments.indexOf('}', open));
-  const match = block.match(/--accent:\s*(#[0-9a-fA-F]{3,8})/);
-  expect(match, `no --accent in ${selector}`).not.toBeNull();
+  const match = block.match(new RegExp(`${property}:\\s*(#[0-9a-fA-F]{3,8})`));
+  expect(match, `no ${property} in ${selector}`).not.toBeNull();
   return match![1].toLowerCase();
 }
+
+const themeAccent = (selector: string): string => themeToken(selector, '--accent');
+const themeBg = (selector: string): string => themeToken(selector, '--bg');
 
 describe('the favicon is wired up at all', () => {
   it('is linked from index.html as an SVG icon', () => {
@@ -83,6 +87,80 @@ describe('the favicon has not drifted from KindredMark', () => {
     // The literal colours belong in the <style> block, where the
     // prefers-color-scheme swap can reach them.
     expect(favicon).toContain('stroke="var(--mark)"');
+  });
+});
+
+/**
+ * The installed-to-Home-Screen icons, added alongside the favicon.
+ *
+ * WHAT THIS CAN AND CANNOT SEE, stated plainly because index.html's own
+ * comment promises more than any test can deliver. These are RASTER files —
+ * iOS will not accept an SVG for `apple-touch-icon` — generated from
+ * favicon.svg. Nothing here can tell whether a PNG is STALE: if the mark
+ * changes and the icons are not regenerated, the suite stays green and the
+ * installed app keeps the old logo. That gap is real and belongs to whoever
+ * changes the mark.
+ *
+ * What it does catch is the whole class of wiring faults that silently break
+ * installation: a manifest naming a file that is not there, a declared size
+ * that does not match the actual pixels, an icon that stops being linked from
+ * index.html, or a background colour that drifts from the theme the icons were
+ * painted in. Every one of those produces a broken or blank Home Screen icon
+ * and none of them is visible from inside the running app.
+ */
+describe('the installable icons are wired up consistently', () => {
+  const manifest = JSON.parse(
+    readFileSync(join(PROJECT_ROOT, 'public', 'manifest.webmanifest'), 'utf8')
+  ) as {
+    background_color: string;
+    theme_color: string;
+    icons: { src: string; sizes: string; type: string }[];
+  };
+
+  /** Reads a PNG's dimensions straight from the IHDR chunk — bytes 16-24 of
+   * the file. Cheaper and more honest than adding an image dependency to the
+   * test suite for two numbers. */
+  function pngSize(relativePath: string): { width: number; height: number } {
+    const bytes = readFileSync(join(PROJECT_ROOT, 'public', relativePath));
+    expect(bytes.subarray(1, 4).toString('latin1'), `${relativePath} is not a PNG`).toBe('PNG');
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+
+  it('declares at least one icon', () => {
+    expect(manifest.icons.length).toBeGreaterThan(0);
+  });
+
+  it('every icon it declares exists, at exactly the size it claims', () => {
+    for (const icon of manifest.icons) {
+      const { width, height } = pngSize(icon.src.replace(/^\//, ''));
+      // A declared size that does not match the file is how a Home Screen icon
+      // ends up scaled, cropped, or dropped outright.
+      expect(`${width}x${height}`, `${icon.src} size mismatch`).toBe(icon.sizes);
+    }
+  });
+
+  it('links the apple touch icon from index.html, which the manifest cannot do for iOS', () => {
+    // iOS reads `apple-touch-icon` from the document, not the manifest, so a
+    // manifest entry alone is not enough for the platform this ships to.
+    expect(indexHtml).toMatch(/<link[^>]+rel="apple-touch-icon"[^>]+>/);
+    const linked = indexHtml.match(/rel="apple-touch-icon"[^>]*href="([^"]+)"/)?.[1];
+    expect(linked, 'apple-touch-icon has no href').toBeDefined();
+    expect(manifest.icons.some((icon) => icon.src === linked)).toBe(true);
+  });
+
+  it('links the manifest itself', () => {
+    expect(indexHtml).toMatch(/<link[^>]+rel="manifest"[^>]+href="\/manifest\.webmanifest"/);
+  });
+
+  it('is painted on the day theme, and says so consistently in three places', () => {
+    // The icons are opaque day-theme artwork (iOS composites no transparency),
+    // so the manifest's colours and index.html's theme-color must agree with
+    // the theme they were actually drawn in — otherwise the splash screen and
+    // the status bar frame the icon in a colour the icon does not contain.
+    const dayBg = themeBg(":root[data-theme='day']");
+    expect(manifest.background_color.toLowerCase()).toBe(dayBg);
+    expect(manifest.theme_color.toLowerCase()).toBe(dayBg);
+    expect(indexHtml.toLowerCase()).toContain(`content="${dayBg}"`);
   });
 });
 
