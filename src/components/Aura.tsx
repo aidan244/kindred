@@ -1,51 +1,53 @@
 /**
- * The aura backdrop — handoff README, "The aura backdrop (every screen)".
- *
- * Five heavily-blurred radial blooms, each drifting on its own slow loop, so
- * the app is never a flat page: it is a room with light moving in it. This
- * replaces the earlier two-iteration ambient wash (design-plan.md §13,
- * `AmbientBackground`) wholesale — the handoff README is now the source of
- * truth for the ground the product stands on, and leaving both in place
- * would mean two competing backdrops.
+ * The aura backdrop — one centred orb, turning slowly behind everything.
  *
  * MOUNTED ONCE, ABOVE THE ROUTER (src/App.tsx) — never per screen. That is
- * the whole point: the drift is continuous THROUGH navigation rather than
+ * the whole point: the motion is continuous THROUGH navigation rather than
  * restarting on every push, which is only true if this element never
  * unmounts and never re-keys. It also means the aura cannot participate in
- * a route transition, which the README requires ("the aura, the dock and the
- * emergency control must not animate or reflow during a transition").
+ * a route transition, which the handoff README requires ("the aura, the dock
+ * and the emergency control must not animate or reflow during a
+ * transition").
  *
- * Geometry, fills and blurs are verbatim from the README's table. The fills
- * are read from `--aura-N-rgb` / `--aura-N-a` (src/styles/tokens.css) rather
- * than written literally here, per the no-hard-coded-hex invariant; the day
- * values in that file are the README's numbers exactly.
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS NO LONGER THE README'S FIVE BLOOMS
  *
- * TWO DELIBERATE DEPARTURES FROM THE README, ON REQUEST — the brief was for
- * a backdrop that visibly breathes, and the README's own numbers do not
- * produce one:
+ * The README's composition is five wide, scattered blooms sized as a
+ * percentage of the viewport. On a desktop window it works. On a phone —
+ * the only device this product actually ships to — it disappeared, for two
+ * compounding reasons, neither of which is fixable by changing its numbers:
  *
- *  1. The drift is ~2.5x faster and travels 1.8x further (`--dur-aura-*` in
- *     tokens.css, and the keyframes in index.css). At the README's 46-74s
- *     periods a half-cycle runs 23-37 seconds; under 34-58px of blur that is
- *     below the threshold at which a person perceives motion at all, so the
- *     spec'd aura is genuinely drifting and reads as a still image.
- *  2. Each bloom now also runs a brightness breath on a second, differently-
- *     lengthed loop. Translation alone does not read as breathing — a blurred
- *     form sliding behind content is just a form sliding. Light swelling and
- *     settling is what the eye reads as breath.
+ *  1. TRAVEL COLLAPSED. A percentage translate resolves against the
+ *     element's OWN box, and the blooms were sized as a percentage of the
+ *     viewport. At 390px wide they drifted 3.7-5.9x less far than at
+ *     1440px: bloom 3 moved 129px across on a desktop and 35px on a phone.
+ *     The animation was still running; there was just nothing to see.
  *
- * What did NOT change, and must not: the five blooms, their sizes, positions,
- * fills, blurs, easing, and every keyframe's REST stop. The breath only ever
- * dims from the designed alpha, never brightens past it — those alphas are a
- * contrast ceiling, not a taste setting. Night's blooms 1 and 4 put metadata
- * text at 4.52:1 where they overlap, with no headroom, which is also why the
- * night palette was left alone rather than lifted to match day's presence.
+ *  2. THERE WAS NOWHERE TO SEE IT. The blooms sit around the edges of the
+ *     field, and content is capped at `--content-max` (420px). On a wide
+ *     window that leaves hundreds of pixels of bare aura either side of the
+ *     column; at 390px the column IS the viewport, and the only aura left
+ *     visible is whatever shows between opaque cards.
  *
- * Cost: transform-only animation on five composited layers, no per-frame JS,
- * nothing that can affect layout. `contain: strict` keeps the blur out of
- * the rest of the page's paint work.
+ * Both are fixed by the same change: ONE ORB, CENTRED, SIZED IN `vmin`.
+ * `vmin` makes the circle and its travel identical at every aspect ratio,
+ * and putting it in the middle puts it behind the content column rather
+ * than around it — so the phone is now the case it is designed for instead
+ * of the case it degrades to.
  *
- * Reduced motion holds the blooms static rather than removing them (README,
+ * The layer alphas are still derived the same way, and still sit at the
+ * contrast ceiling: the composited field is sampled across a 390x844
+ * viewport at both ends of the breath, and the worst text contrast anywhere
+ * in it is the number that binds. Day 4.92:1, night 4.73:1, against a 4.5:1
+ * floor. See src/styles/tokens.css for what each theme spends its budget on
+ * and why day's core is a warm white rather than the accent.
+ * ---------------------------------------------------------------------------
+ *
+ * Cost: transform and opacity only, on four composited layers, no per-frame
+ * JS, nothing that can affect layout. `contain: strict` keeps the blur out
+ * of the rest of the page's paint work.
+ *
+ * Reduced motion holds the orb static rather than removing it (README,
  * motion_and_accessibility) — the room stays lit, the light stops moving.
  */
 
@@ -62,121 +64,132 @@ const ROOT_STYLE: CSSProperties = {
   contain: 'strict',
 };
 
-interface Bloom {
-  /** Width / height, as a percentage of the screen box. */
-  width: string;
-  height: string;
-  left: string;
-  top: string;
-  /** Which `--aura-N-*` pair fills it. */
-  token: 1 | 2 | 3 | 4 | 5;
-  /** Where the radial gradient reaches zero alpha. */
-  stop: string;
+/**
+ * Where the orb sits. Slightly above centre on purpose: dead centre puts the
+ * brightest part of the field behind the live-data card, which is opaque, so
+ * most of it would never be seen. At 44% it sits behind the greeting and the
+ * avatar — the part of every screen that is text on bare background.
+ */
+const CENTRE_X = '50%';
+const CENTRE_Y = '44%';
+
+interface Layer {
+  /** Diameter in `vmin` — see the header on why not a percentage. */
+  size: number;
+  /** Slight ellipticity, as a fraction of `size`. A perfect circle shows no
+   * rotation at all; this is what makes the rings' turning visible without
+   * making them look like they are spinning. */
+  squash: number;
+  /** Which `--aura-*` token pair fills it. */
+  token: 'core' | 'ring-1' | 'ring-2' | 'field';
+  /** A solid centre falling to nothing, or an annulus. */
+  shape: { kind: 'disc'; stop: number } | { kind: 'ring'; inner: number; peak: number; outer: number };
   blur: string;
-  keyframes: 'aura-a' | 'aura-b' | 'aura-c' | 'aura-d';
-  /** Which `--dur-aura-N` and `--dur-aura-breath-N` drive it. */
-  duration: 1 | 2 | 3 | 4 | 5;
-  /** Negative offset into the brightness breath — see BLOOMS below. */
+  keyframes: string;
+  /** Which `--dur-orb-*` and `--dur-aura-breath-*` drive it. */
+  duration: string;
+  /** Negative offset into the breath, so the four layers never swell
+   * together and read as one pulsing object. */
   breathDelay: string;
 }
 
-/**
- * The transform each keyframe track rests at — its 0%/100% stop, verbatim.
- *
- * Two of the four carry a rest SCALE (the README: "aura-b: rest scale(1.04)",
- * "aura-d: rest scale(1.06)"), and that is the whole reason this is a map
- * rather than one shared constant. Reduced motion holds the blooms static at
- * their rest stop, and a single `translate(-50%,-50%)` held bloom 2 at scale 1
- * and blooms 4 and 5 at scale 1, i.e. 4-6% smaller than their designed rest
- * size — dropping part of the composition for exactly the users the rule
- * exists to serve. "Hold the blooms static (do not remove them)" means hold
- * them AT the 0%/100% stop, scale included.
- *
- * Keep these in step with the @keyframes in src/index.css: the animated case
- * and the held-static case must agree on the same rest position.
- */
-const REST_TRANSFORM: Record<Bloom['keyframes'], string> = {
-  'aura-a': 'translate(-50%, -50%)',
-  'aura-b': 'translate(-50%, -50%) scale(1.04)',
-  'aura-c': 'translate(-50%, -50%)',
-  'aura-d': 'translate(-50%, -50%) scale(1.06)',
-};
-
-/**
- * The five blooms, in the README's order and at its positions. Blooms 4 and 5
- * share the `aura-d` track on deliberately different periods — that is what
- * the table says.
- *
- * SIZES, STOPS AND BLURS ARE 0.52x THE README'S, ON REQUEST — the change
- * that actually produced a higher-contrast backdrop, and the one worth
- * understanding before anyone "restores" the table.
- *
- * The README's blooms are 112-170% of the viewport WIDE with `closest-side`
- * gradients, which puts the entire falloff off-screen: what reaches the eye
- * is the middle of one enormous gradient, i.e. a flat tint. Raising the
- * alphas — the obvious response to "too subtle" — only makes the tint
- * stronger, and it is spent entirely on text contrast, because a uniform
- * wash shifts every pixel under the text by the same amount.
- *
- * Shrinking them instead puts the falloff back inside the viewport, so there
- * is light AND shade on screen at the same time. Measured as the L* range
- * across the composited field: day 8.8 -> 13.5, night 10.1 -> 21.8. Night
- * more than doubled without spending any text contrast at all, because peak
- * alpha never changed — only how much of the screen sits at it.
- *
- * Blurs are scaled with the sizes (also 0.52x). Leaving them at the README's
- * 34-58px would erase a 58%-wide bloom outright, which is the same mistake
- * in the other direction.
- *
- * `breathDelay` is a NEGATIVE delay, which starts an animation part-way
- * through rather than postponing it. Without it all five blooms would begin
- * their brightness breath together at mount and the whole field would pulse
- * as one object — the opposite of the intended effect, which is five
- * independent lights in a room that happen to share it. The values are
- * spread across the periods rather than evenly spaced, so no two blooms are
- * ever an exact half-cycle apart either. */
-const BLOOMS: Bloom[] = [
-  { width: '88%', height: '30%', left: '50%', top: '30%', token: 1, stop: '54%', blur: '18px', keyframes: 'aura-a', duration: 1, breathDelay: '-3s' },
-  { width: '78%', height: '27%', left: '26%', top: '66%', token: 2, stop: '50%', blur: '30px', keyframes: 'aura-b', duration: 2, breathDelay: '-11s' },
-  { width: '62%', height: '23%', left: '82%', top: '18%', token: 3, stop: '48%', blur: '27px', keyframes: 'aura-c', duration: 3, breathDelay: '-7s' },
-  { width: '58%', height: '20%', left: '16%', top: '8%', token: 4, stop: '48%', blur: '23px', keyframes: 'aura-d', duration: 4, breathDelay: '-16s' },
-  { width: '78%', height: '27%', left: '62%', top: '96%', token: 5, stop: '50%', blur: '24px', keyframes: 'aura-d', duration: 5, breathDelay: '-5s' },
+/** Outermost first — these paint in order. */
+const LAYERS: Layer[] = [
+  {
+    size: 150,
+    squash: 1,
+    token: 'field',
+    shape: { kind: 'disc', stop: 82 },
+    blur: '40px',
+    keyframes: 'orb-field',
+    duration: 'field',
+    breathDelay: '-11s',
+  },
+  {
+    size: 114,
+    squash: 0.94,
+    token: 'ring-2',
+    shape: { kind: 'ring', inner: 60, peak: 70, outer: 80 },
+    blur: '26px',
+    keyframes: 'orb-ring-2',
+    duration: 'ring-2',
+    breathDelay: '-17s',
+  },
+  {
+    size: 86,
+    squash: 0.96,
+    token: 'ring-1',
+    shape: { kind: 'ring', inner: 56, peak: 68, outer: 80 },
+    blur: '20px',
+    keyframes: 'orb-ring-1',
+    duration: 'ring-1',
+    breathDelay: '-5s',
+  },
+  {
+    size: 62,
+    squash: 1,
+    token: 'core',
+    shape: { kind: 'disc', stop: 72 },
+    blur: '24px',
+    keyframes: 'orb-core',
+    duration: 'core',
+    breathDelay: '-3s',
+  },
 ];
+
+/** The rest transform every layer holds at, matching its keyframes' 0% stop
+ * so the animated and held-static cases agree. Ring 2 rests at scale(1.03)
+ * because its track does. */
+function restTransform(layer: Layer): string {
+  return layer.keyframes === 'orb-ring-2'
+    ? 'translate(-50%, -50%) scale(1.03)'
+    : 'translate(-50%, -50%)';
+}
+
+function background(layer: Layer): string {
+  const fill = `rgb(var(--aura-${layer.token}-rgb) / var(--aura-${layer.token}-a))`;
+  if (layer.shape.kind === 'disc') {
+    return `radial-gradient(closest-side, ${fill}, transparent ${layer.shape.stop}%)`;
+  }
+  const { inner, peak, outer } = layer.shape;
+  // An annulus: nothing in the middle, the fill at its peak radius, nothing
+  // again outside. This is what gives the orb concentric structure instead
+  // of one flat falloff.
+  return `radial-gradient(closest-side, transparent ${inner}%, ${fill} ${peak}%, transparent ${outer}%)`;
+}
 
 export function Aura(): ReactElement {
   const reduced = usePrefersReducedMotion();
 
   return (
     <div style={ROOT_STYLE} aria-hidden="true" data-aura>
-      {BLOOMS.map((bloom, index) => (
+      {LAYERS.map((layer) => (
         <div
-          key={index}
+          key={layer.token}
           data-reduced-keep={reduced ? '' : undefined}
           style={{
             position: 'absolute',
-            width: bloom.width,
-            height: bloom.height,
-            left: bloom.left,
-            top: bloom.top,
-            transform: REST_TRANSFORM[bloom.keyframes],
+            width: `${layer.size}vmin`,
+            height: `${layer.size * layer.squash}vmin`,
+            left: CENTRE_X,
+            top: CENTRE_Y,
+            transform: restTransform(layer),
             borderRadius: '50%',
-            background: `radial-gradient(closest-side, rgb(var(--aura-${bloom.token}-rgb) / var(--aura-${bloom.token}-a)), transparent ${bloom.stop})`,
-            filter: `blur(${bloom.blur})`,
+            background: background(layer),
+            filter: `blur(${layer.blur})`,
             willChange: reduced ? undefined : 'transform, opacity',
-            // Held static: at the designed alpha (opacity 1), not at the
-            // breath's trough. "Hold the blooms static (do not remove them)"
-            // means the room stays as lit as it was designed to be — dimming
-            // it by 30% for the users the rule exists to serve would be a
-            // quieter way of removing it.
+            // Held static at the designed alpha, not at the breath's trough:
+            // "hold it static (do not remove it)" means the room stays as lit
+            // as it was designed to be. Dimming it for exactly the users the
+            // rule exists to serve would be a quieter way of removing it.
             opacity: reduced ? 1 : undefined,
-            // Two loops of different length on one element: the drift moves
-            // the light, the breath swells it. Neither touches a property
-            // the other does, so they compose rather than fight, and both
-            // are compositor-only.
+            // Two loops of different length on one element: one turns it, one
+            // swells it. Neither touches a property the other does, so they
+            // compose rather than fight, and both are compositor-only.
             animation: reduced
               ? 'none'
-              : `${bloom.keyframes} var(--dur-aura-${bloom.duration}) var(--ease-breathe) infinite, ` +
-                `aura-breath var(--dur-aura-breath-${bloom.duration}) var(--ease-breathe) ${bloom.breathDelay} infinite`,
+              : `${layer.keyframes} var(--dur-orb-${layer.duration}) var(--ease-breathe) infinite, ` +
+                `aura-breath var(--dur-aura-breath-${layer.duration}) var(--ease-breathe) ${layer.breathDelay} infinite`,
           }}
         />
       ))}

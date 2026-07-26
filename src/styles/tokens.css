@@ -143,22 +143,20 @@
    * still the README's table verbatim.
    *
    * Still pairwise non-multiple, so the composite never visibly loops. */
-  --dur-aura-1: 18s;
-  --dur-aura-2: 24s;
-  --dur-aura-3: 30s;
-  --dur-aura-4: 26s;
-  --dur-aura-5: 21s;
+  --dur-orb-core: 16s;
+  --dur-orb-ring-1: 120s;
+  --dur-orb-ring-2: 150s;
+  --dur-orb-field: 44s;
 
   /* Aura breath periods — the brightness pulse that runs alongside the
    * drift. Deliberately NOT the drift periods: two loops of different length
    * on the same element is what stops the aura reading as one mechanical
    * cycle. Each is coprime-ish with its own bloom's drift period, so a bloom
    * is rarely at the same point of both loops twice. */
-  --dur-aura-breath-1: 13s;
-  --dur-aura-breath-2: 17s;
-  --dur-aura-breath-3: 23s;
-  --dur-aura-breath-4: 19s;
-  --dur-aura-breath-5: 15s;
+  --dur-aura-breath-core: 13s;
+  --dur-aura-breath-ring-1: 17s;
+  --dur-aura-breath-ring-2: 23s;
+  --dur-aura-breath-field: 19s;
 
   /* How far down from its designed alpha a bloom dims at the bottom of its
    * breath. The breath only ever REDUCES a bloom's presence — the designed
@@ -215,45 +213,25 @@
   --wash-a3: 0.14;
   --wash-a4: 0.22;
 
-  /* Aura blooms — night. -------------------------------------------------
-   * The handoff README tabulates ONE set of fills, which is the day set
-   * (its prototype is a day-theme board); night is listed as "for later".
-   * Night keeps the same five roles and the same geometry, re-pitched for a
-   * dark room: bloom 1 is the lamp itself rather than a warm white, bloom 3
-   * deepens further into the unlit corner, bloom 5 is a raised surface tone
-   * rather than warm sand. Alphas are lower because added light reads much
-   * further on darkness — see the contrast budget note above --wash-*.
-   * Both themes are verified: body text (--text) and metadata
-   * (--text-muted) stay >= 4.5:1 over every bloom.
+  /* Aura orb — night. ----------------------------------------------------
+   * One centred orb, not the README's five scattered blooms — see the
+   * header comment on src/components/Aura.tsx for why the composition
+   * changed and what it fixed.
    *
-   * ALPHAS ARE AT THE CONTRAST CEILING, not chosen by eye. They were found
-   * by compositing the real geometry over a 390x844 viewport — every bloom,
-   * at both ends of its drift, at every point on a grid — and taking the
-   * worst text contrast anywhere in the field. These are the highest values
-   * that keep --text-muted at or above 4.5:1 by that measure; the next step
-   * up (0.30/0.34/0.20) lands at 4.27:1.
-   *
-   * That simulation is also why they could be raised this far at all. The
-   * cheap approximation — assume any set of blooms might stack at full
-   * strength — says this configuration fails at 3.00:1, because it counts
-   * blooms 2 and 4 overlapping at peak when they sit at opposite ends of
-   * the screen and cannot. Bounding the aura by what CAN happen rather than
-   * by what could be arranged is worth about 60% more light here.
-   *
-   * Night gets the rest of its contrast from SHADOW rather than light —
-   * bloom 3 is a deepening pool, and deepening the ground only ever helps
-   * light text. That is why bloom 3 is the one night alpha well clear of
-   * its ceiling. */
-  --aura-1-rgb: 232 180 120; /* the lamp */
-  --aura-1-a: 0.25;
-  --aura-2-rgb: var(--accent-rgb);
-  --aura-2-a: 0.28;
-  --aura-3-rgb: 8 5 7; /* the unlit corner, deepening */
-  --aura-3-a: 0.62;
-  --aura-4-rgb: var(--accent-rgb);
-  --aura-4-a: 0.16;
-  --aura-5-rgb: 53 43 48; /* = --surface-hi, a raised floor */
-  --aura-5-a: 0.85;
+   * At night every layer is the lamp itself: a warm core in an unlit room,
+   * with two concentric rings around it. ALPHAS ARE AT THE CONTRAST
+   * CEILING, found by compositing the real circles over a 390x844 viewport
+   * at both ends of the breath and taking the worst text contrast anywhere
+   * in the field. These give 4.73:1 for --text-muted; the next step up
+   * (0.11/0.15/0.19/0.24) lands at 3.90:1 and fails. */
+  --aura-core-rgb: var(--accent-rgb);
+  --aura-core-a: 0.18;
+  --aura-ring-1-rgb: var(--accent-rgb);
+  --aura-ring-1-a: 0.14;
+  --aura-ring-2-rgb: var(--accent-rgb);
+  --aura-ring-2-a: 0.11;
+  --aura-field-rgb: var(--accent-rgb);
+  --aura-field-a: 0.08;
 }
 
 /* --------------------------------------------------------------------------
@@ -308,17 +286,23 @@
   --wash-a3: 0.2;
   --wash-a4: 0.26;
 
-  /* Aura blooms — day. Verbatim from the handoff README's aura table
-   * ("Fill" column), split into rgb + alpha so a component never writes a
-   * literal colour. Do not adjust: the table is the source of truth. */
-  --aura-1-rgb: 255 246 232;
-  --aura-1-a: 0.72;
-  --aura-2-rgb: 138 87 23; /* = --accent-rgb */
-  --aura-2-a: 0.34;
-  --aura-3-rgb: 28 22 25;
-  --aura-3-a: 0.11;
-  --aura-4-rgb: 138 87 23; /* = --accent-rgb */
-  --aura-4-a: 0.17;
-  --aura-5-rgb: 216 196 182;
-  --aura-5-a: 0.95;
+  /* Aura orb — day. ------------------------------------------------------
+   * The core is a WARM WHITE here rather than the accent, which is not a
+   * stylistic difference — it is what the contrast budget pays for. Day
+   * text is dark on warm paper, so a layer that LIGHTENS the ground costs
+   * nothing (dark text on a lighter field only gains contrast) while the
+   * accent darkens it and is spent immediately. An accent core measured a
+   * 10.0 L* spread at the floor; a warm-white core with accent rings
+   * measures 14.4 with more margin left over.
+   *
+   * Same derivation as night: worst point of the composited field, at both
+   * ends of the breath. These give 4.92:1 for --text-muted. */
+  --aura-core-rgb: 255 251 243;
+  --aura-core-a: 0.92;
+  --aura-ring-1-rgb: var(--accent-rgb);
+  --aura-ring-1-a: 0.18;
+  --aura-ring-2-rgb: var(--accent-rgb);
+  --aura-ring-2-a: 0.14;
+  --aura-field-rgb: 255 251 243;
+  --aura-field-a: 0.10;
 }

@@ -106,80 +106,88 @@
 }
 
 /* --------------------------------------------------------------------------
- * The aura backdrop — handoff README, "The aura backdrop (every screen)".
+ * The aura orb — one centred, slowly turning presence.
  *
- * Four keyframe tracks shared by five blooms (bloom 5 reuses aura-d on its
- * own period). Every stop bakes in the `translate(-50%,-50%)` centring the
- * blooms are anchored with, so the animated and the held-static (reduced
- * motion) cases agree on the same rest position — the same law the old wash
- * followed. Transform and opacity only: nothing here can affect layout.
+ * Every layer is anchored with left/top + `translate(-50%,-50%)`, so that
+ * centring is baked into every keyframe stop; the animated case and the
+ * held-static (reduced motion) case then agree on the same rest position.
  *
- * TRAVEL IS 1.8x THE README'S, ON REQUEST — see the note on --dur-aura-*
- * in tokens.css. Every rest stop (0%/100%) is untouched, so the composition
- * at rest, and the position reduced motion holds the blooms at, are both
- * exactly what the README specifies. Only the 50% stops travel further:
- * each one's offset FROM ITS OWN REST STOP is multiplied by 1.8, translate
- * and scale alike, which keeps the shape of every path and only lengthens
- * it. Worked in the comment above each so the arithmetic is checkable.
- */
-@keyframes aura-a {
+ * TRAVEL AND SIZE ARE IN VIEWPORT UNITS, NOT PERCENTAGES. A percentage
+ * translate resolves against the element's OWN box, so when the layers were
+ * sized as a percentage of the viewport the whole composition's travel
+ * shrank with the window — at 390px wide the blooms drifted 3.7-5.9x less
+ * far than on a desktop, which is why the effect was invisible on a phone.
+ * `vmin` makes both the circle and its motion identical at every aspect
+ * ratio.
+ *
+ * The rings turn rather than drift, and turn against each other. Rotation
+ * on a slightly elliptical ring is what reads as a living instrument rather
+ * than a gradient; counter-rotation is what stops the pair reading as one
+ * rigid object. Both periods are minutes long, so nothing ever appears to
+ * spin — it is closer to watching a tide than a dial.
+ * ------------------------------------------------------------------------ */
+@keyframes orb-core {
   0%,
   100% {
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(1);
   }
-  /* README: (-54%,-58%) scale(1.16) — offsets (-4,-8) and +0.16, x1.8. */
   50% {
-    transform: translate(-57.2%, -64.4%) scale(1.288);
+    transform: translate(-50%, -50%) translate(0.6vmin, -1vmin) scale(1.07);
   }
 }
 
-@keyframes aura-b {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1.04);
+@keyframes orb-ring-1 {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
   }
-  /* README: (-44%,-42%) scale(1.2) — offsets (+6,+8) and +0.16, x1.8. */
   50% {
-    transform: translate(-39.2%, -35.6%) scale(1.328);
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.05);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
   }
 }
 
-@keyframes aura-c {
-  0%,
-  100% {
-    transform: translate(-50%, -50%);
+/* Counter-turning, and shrinking where ring 1 grows. */
+@keyframes orb-ring-2 {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.03);
   }
-  /* README: (-58%,-46%) scale(1.24) — offsets (-8,+4) and +0.24, x1.8. */
   50% {
-    transform: translate(-64.4%, -42.8%) scale(1.432);
+    transform: translate(-50%, -50%) rotate(-180deg) scale(0.97);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg) scale(1.03);
   }
 }
 
-@keyframes aura-d {
+/* The soft ground the orb sits in. Barely moves; it exists so the orb is a
+ * light in a room rather than a spotlight in a void. */
+@keyframes orb-field {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: translate(-50%, -50%) scale(1);
   }
-  /* README: (-46%,-56%) scale(0.92) — offsets (+4,-6) and -0.14, x1.8.
-   * This is the one track that shrinks rather than grows at mid-cycle. */
   50% {
-    transform: translate(-42.8%, -60.8%) scale(0.808);
+    transform: translate(-50%, -50%) translate(-1.2vmin, 0.8vmin) scale(1.06);
   }
 }
 
 /*
- * The brightness breath, running alongside the drift on its own period.
+ * The brightness breath, running on each layer on its own period.
  *
- * Translation alone does not read as breathing — a blurred form sliding
- * behind content is just a form sliding. What the eye reads as breath is
- * light swelling and settling, which is this.
+ * Turning and scaling alone do not read as breathing — a blurred form moving
+ * behind content is just a form moving. What the eye reads as breath is
+ * light swelling and settling, which is this. Giving each layer a different
+ * breath period, none of them matching its own rotation period, is what
+ * keeps the orb from resolving into a single repeating cycle.
  *
- * Peak is opacity 1, i.e. the bloom's designed alpha from tokens.css: the
+ * Peak is opacity 1, i.e. the layer's designed alpha from tokens.css: the
  * breath only ever dims. That is deliberate and load-bearing, not caution —
- * those alphas are the contrast-verified ceiling (night's blooms 1 and 4
- * put metadata text at 4.52:1 where they overlap, with no headroom at all),
- * so a breath that brightened past them would break the contrast floor
- * twice a minute in the state she is most likely to open the app in.
+ * those alphas sit at the contrast ceiling (night's give --text-muted
+ * 4.73:1, and the next step up fails at 3.90:1), so a breath that brightened
+ * past them would break the contrast floor twice a minute in the state she
+ * is most likely to open the app in.
  */
 @keyframes aura-breath {
   0%,

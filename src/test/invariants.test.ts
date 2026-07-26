@@ -260,7 +260,8 @@ describe('design tokens', () => {
     '--text', '--text-muted', '--accent', '--emergency',
     '--accent-rgb', '--text-rgb',
     '--on-accent', '--on-emergency', '--line', '--focus',
-    '--aura-1-a', '--aura-2-a', '--aura-3-a', '--aura-4-a', '--aura-5-a',
+    '--aura-core-a', '--aura-ring-1-a', '--aura-ring-2-a', '--aura-field-a',
+    '--aura-core-rgb', '--aura-ring-1-rgb', '--aura-ring-2-rgb', '--aura-field-rgb',
   ];
 
   for (const [name, selector] of [
