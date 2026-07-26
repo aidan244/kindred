@@ -1,24 +1,69 @@
 /**
- * The outcome screen (/outcome) — one screen, two states, chosen by
- * `disposition(entryPath, categoryAnswers)`:
+ * The outcome screen (/outcome) — handoff README, "07 Outcome — emergency
+ * tier". One screen, three renderings of one shape, chosen by two pure
+ * functions that this screen only reads, never second-guesses:
  *
- *  - escalate: leads with a single instruction to call. Which number is
- *    primary now further depends on `getEscalationTier` (held-build-brief.md
- *    placeholder_content, "Escalation tier"):
- *      - emergency tier: 999 is primary (EMERGENCY_TIER_CONTACT below), the
- *        maternity/clinic triage contact moves below the fold as the quiet
- *        secondary route.
- *      - triage tier: exactly today's behaviour — `getTriageContact()` is
- *        primary, 999 is the quiet secondary route.
- *    Only the number and framing change between tiers, nothing else (the
- *    brief's words) — same screen, same layout, same copy elsewhere.
- *  - routine: states what was sent, to which clinic, when, and sets an
- *    honest expectation for a response based on the clinic's actual hours,
- *    never implying someone is reading it if the clinic is closed.
+ *  - `disposition(entryPath, categoryAnswers)` → escalate | routine.
+ *  - `getEscalationTier(categoryAnswers)` → emergency | triage, but only
+ *    once the disposition is already 'escalate'.
  *
- * Both states offer the same report download, and a report has already gone
- * to the clinic in the background in both cases (rule 4e) — this screen
- * never makes her wait for that.
+ * The README draws the EMERGENCY tier only. The other two states are the
+ * same composition with different content, deliberately — one type rhythm
+ * (title → lead 12px → surface card 24px), one card treatment (radius 22,
+ * padding 22, 8px gaps), one dock shape. Nothing here has its own styling
+ * language, because "which state am I in" must never be something she has to
+ * re-learn the layout to answer:
+ *
+ *  - emergency tier: 999 is the primary route (EMERGENCY_TIER_CONTACT
+ *    below), the resolved maternity/clinic triage line moves below the fold
+ *    as EmergencyCall's own quiet secondary row, and the card carries the
+ *    while-you-wait advice.
+ *  - triage tier: exactly the previous behaviour — `getTriageContact()` is
+ *    primary and 999 is the quiet secondary route. Only the number and the
+ *    framing change between tiers, nothing else (the brief's words).
+ *  - routine: states ONLY what this app witnessed — that she pressed Send,
+ *    at what time, and when her clinic is open. It contains NO red at all:
+ *    its "call your clinic" affordance is a plain non-emergency control
+ *    rendered here, never EmergencyCall, so the emergency token stays
+ *    confined to the one component that owns it.
+ *
+ * WHAT THE ROUTINE STATE USED TO CLAIM, AND WHY IT NO LONGER DOES. It drew a
+ * three-row timeline — "Sent", "Received by your clinic" (hardcoded
+ * `complete`) and "Clinician reviewing" (`active` whenever the clinic was
+ * open) — plus the line "Your report is in their queue." Receipt is never
+ * confirmed by anything; no clinician is known to be reading anything; and
+ * `submitReport()` (src/context/AppStateContext.tsx) writes local React state
+ * with no transport of any kind behind it. Three assertions about a third
+ * party's system, none of them observable from here. They are gone rather
+ * than softened — a gentler wording would still be a claim — leaving the one
+ * fact the app actually holds: she pressed Send, and when.
+ *
+ * The same reasoning removes the invented clock. `/outcome` is a real route
+ * and `disposition('adhoc', [])` is 'routine', so arriving here having
+ * submitted nothing used to print "Sent to … at 14:32." from `now()`. When
+ * `reportSubmission.submittedAt` is null this screen now renders nothing in
+ * its place — no lead, no time, and a title that claims nothing.
+ *
+ * Both escalate states offer the same report download, and a report has
+ * already gone to the clinic in the background in every case (rule 4e) —
+ * this screen never makes her wait for that.
+ *
+ * WHAT THIS SCREEN DELIBERATELY DOES NOT RENDER (all hoisted; duplicating
+ * any of them breaks the invariant it exists to protect):
+ *  - the aura backdrop — mounted once in App (src/components/Aura.tsx);
+ *  - the docked controls AND the fade behind them — owned by the shared dock
+ *    rectangle (src/components/Dock.tsx). This screen used to draw its own
+ *    fixed bottom gradient and to render EmergencyCall inline in the content
+ *    column; both are gone. The emergency control now lives in `<Dock
+ *    variant="tall">` like every other screen's, so it occupies the same
+ *    rectangle in the same position and does not move when she arrives here;
+ *  - its own entrance animation — RouteTransition wraps the router.
+ *
+ * DOCK CLEARANCE. Escalate carries `dock-safe-tall` (268px), routine carries
+ * `dock-safe` (112px). The emergency tier's dock measures taller than 268px
+ * only because of the `48px` of top padding the tall dock uses to run its
+ * `to top, bg 66%, transparent` fade — the controls themselves start below
+ * that, so no content ever sits underneath something tappable.
  */
 
 import { useEffect, useState, type ReactElement } from 'react';
@@ -29,13 +74,32 @@ import {
   BLEEDING_CATEGORY_ID,
   BLEEDING_EMERGENCY_NOTE,
   EMERGENCY_ADD_MORE_LABEL,
+  OUTCOME_DOWNLOAD_ESCALATE_LABEL,
+  OUTCOME_DOWNLOAD_ROUTINE_LABEL,
+  OUTCOME_EMERGENCY_ADVICE,
+  OUTCOME_EMERGENCY_CONTACT_REASON,
+  OUTCOME_EMERGENCY_SERVICES_LABEL,
+  OUTCOME_EMERGENCY_TITLE,
+  OUTCOME_ESCALATE_TRIAGE_TITLE,
+  OUTCOME_ROUTINE_NO_SUBMISSION_TITLE,
+  OUTCOME_ROUTINE_TITLE,
+  callContactAccessibleLabel,
+  emergencyHandoverLead,
+  outcomeCallContactLabel,
+  outcomeReportSentNote,
+  outcomeRoutineClinicHours,
+  outcomeRoutineSentLead,
+  outcomeRoutineWaitNote,
   patientFixture,
 } from '../data/clinicalContent';
 import { disposition } from '../logic/disposition';
 import { getEscalationTier } from '../logic/escalationTier';
 import { getTriageContact } from '../logic/triageContact';
 import { downloadReportPdf } from '../logic/reportPdf';
+import { CheckInControl } from '../components/CheckInControl';
+import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
+import { OperatorCall } from '../components/OperatorCall';
 import { assembleReportData, formatClock, isClinicOpenAt } from './reportAssembly';
 import type { CategoryAnswer, TriageContact, VoiceNote } from '../types';
 
@@ -51,13 +115,25 @@ interface OutcomeSnapshot {
  * "attend" and never "A&E" (rules 4b/4d). This is the one place in the
  * product a `TriageContact` is built by hand rather than resolved by
  * `getTriageContact()`, which never returns 999 by design (see that
- * function's header comment). */
+ * function's header comment).
+ *
+ * `reason` is required by the type but is no longer what this screen shows
+ * under the title: the README's lead for this tier is
+ * `emergencyHandoverLead()`, which is built from what she actually told us
+ * rather than from a fixed sentence. Kept honest and short so it stays
+ * correct if some other surface ever reads it. */
 const EMERGENCY_TIER_CONTACT: TriageContact = {
-  label: 'emergency services',
+  label: OUTCOME_EMERGENCY_SERVICES_LABEL,
   number: '999',
-  reason: 'Call 999 now.',
+  reason: OUTCOME_EMERGENCY_CONTACT_REASON,
   kind: 'emergency',
 };
+
+/* Every patient-facing string on this screen — both escalate tiers and the
+ * routine state, the two download labels and the call row — now comes from
+ * src/data/clinicalContent.ts. This file used to hold the largest single
+ * concentration of misplaced copy in the codebase, on the screen that follows
+ * an escalation decision, with a header comment conceding it and deferring. */
 
 function bleedingSecondaryNote(answers: CategoryAnswer[]): string | undefined {
   const flagged = answers.some((a) => a.categoryId === BLEEDING_CATEGORY_ID && a.gateAnswer === 'yes');
@@ -67,6 +143,22 @@ function bleedingSecondaryNote(answers: CategoryAnswer[]): string | undefined {
 function telHref(number: string): string {
   return `tel:${number.replace(/[^\d+]/g, '')}`;
 }
+
+/** README §07: `padding: 32px 24px 0`, content max-width 420, centred. The
+ * top inset is added to the 32px rather than replacing it, so the title keeps
+ * its designed distance from the notch on hardware that has one. */
+const CONTENT_CLASSES =
+  'mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)]';
+
+/** The bar treatment (README, "CheckInControl" → bar), minus the float
+ * shadow, which the README reserves for the docked control. Used for both
+ * in-content controls on this screen — the report download and the routine
+ * state's plain call affordance — so neither competes with the dock and
+ * neither invents a weight of its own. `press` because both are ordinary
+ * controls; the emergency and operator routes are the only two that never
+ * animate, and neither of these is one of them. */
+const CONTENT_CONTROL_CLASSES =
+  'tap press flex w-full items-center justify-center gap-2 rounded-pill border border-line bg-surface px-6 py-3 text-label text-text';
 
 export default function Outcome(): ReactElement {
   const {
@@ -111,13 +203,20 @@ export default function Outcome(): ReactElement {
   const contact = getTriageContact(now(), patientFixture);
   const clinic = patientFixture.clinic;
   const clinicOpen = isClinicOpenAt(now(), clinic.hours);
-  const submittedAt = reportSubmission.submittedAt ?? now();
+  // NULLABLE ON PURPOSE. `null` means nothing was ever submitted, which is
+  // reachable: /outcome is a real route and disposition('adhoc', []) is
+  // 'routine'. The routine state renders nothing in place of the time rather
+  // than substituting `now()` — see this file's header.
+  const submittedAt = reportSubmission.submittedAt;
 
   const report = assembleReportData({
     patientName: patientFixture.name,
     gestationWeeks: patientFixture.gestationWeeks,
     entryPath: snapshot.entryPath,
-    submittedAt,
+    // The PDF needs a Date. With no submission this falls back to the moment
+    // the document is being produced, which is what its "Generated …" line
+    // says anyway — the fallback stays inside the report, never on screen.
+    submittedAt: submittedAt ?? now(),
     categoryAnswers: snapshot.categoryAnswers,
     hardStopEndedEarly: snapshot.hardStopEndedEarly,
     freeTextDescription: snapshot.triageDescription,
@@ -150,48 +249,68 @@ export default function Outcome(): ReactElement {
   // screen no longer needs to do it too — see that effect for where the
   // voice-note revocation now happens instead.
 
-  return (
-    <div className="relative mx-auto min-h-screen w-full max-w-[420px] px-6">
-      <div className="dock-safe pt-8">
-        {result === 'escalate' ? (
-          tier === 'emergency' ? (
-            <EscalateOutcome
-              contact={EMERGENCY_TIER_CONTACT}
-              secondaryContact={contact}
-              onDownload={handleDownload}
-              onAddMore={handleAddMore}
-            />
-          ) : (
-            <EscalateOutcome
-              contact={contact}
-              secondaryNote={bleedingSecondaryNote(snapshot.categoryAnswers)}
-              onDownload={handleDownload}
-            />
-          )
-        ) : (
-          <RoutineOutcome
-            contact={contact}
-            clinicName={clinic.name}
-            clinicOpen={clinicOpen}
-            clinicOpensAt={clinic.hours.opens}
-            submittedAt={submittedAt}
-            onDownload={handleDownload}
-          />
-        )}
-      </div>
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24"
-        style={{ background: 'linear-gradient(to top, var(--bg), transparent)' }}
+  if (result === 'escalate') {
+    // The tier → content mapping is spelled out here, in one place, rather
+    // than branched on inside the presentational component: EscalateOutcome
+    // renders one shape and is told what goes in it, so the two tiers can
+    // never drift into two different layouts.
+    return tier === 'emergency' ? (
+      <EscalateOutcome
+        title={OUTCOME_EMERGENCY_TITLE}
+        lead={emergencyHandoverLead(patientFixture.gestationWeeks, snapshot.categoryAnswers)}
+        advice={OUTCOME_EMERGENCY_ADVICE}
+        reportSentNote={outcomeReportSentNote(clinic.name)}
+        contact={EMERGENCY_TIER_CONTACT}
+        prominence="lead"
+        secondaryContact={contact}
+        onDownload={handleDownload}
+        onAddMore={handleAddMore}
       />
-    </div>
+    ) : (
+      <EscalateOutcome
+        title={OUTCOME_ESCALATE_TRIAGE_TITLE}
+        // The resolved contact's own reason already says which number and
+        // why ("Your clinic is open now, call this number." / "Your clinic
+        // is closed until 08:00, call the maternity unit instead.") — it is
+        // this tier's equivalent of the emergency handover line.
+        lead={contact.reason}
+        reportSentNote={outcomeReportSentNote(clinic.name)}
+        contact={contact}
+        prominence="standard"
+        secondaryNote={bleedingSecondaryNote(snapshot.categoryAnswers)}
+        onDownload={handleDownload}
+      />
+    );
+  }
+
+  return (
+    <RoutineOutcome
+      contact={contact}
+      clinicName={clinic.name}
+      clinicOpen={clinicOpen}
+      clinicOpensAt={clinic.hours.opens}
+      submittedAt={submittedAt}
+      onDownload={handleDownload}
+    />
   );
 }
 
 interface EscalateOutcomeProps {
+  title: string;
+  /** The one sentence under the title, at `lead` role. */
+  lead: string;
+  /** Emergency tier only: what to do while the ambulance is coming. Omitted
+   * for the triage tier, where none of it applies. */
+  advice?: string;
+  /** Names where the report has already gone, muted, inside the same card. */
+  reportSentNote: string;
   contact: TriageContact;
+  prominence: 'standard' | 'lead';
+  /** Triage tier: the quiet 999 fallback row. */
   secondaryNote?: string;
+  /** Emergency tier: the resolved triage line, as the quiet secondary row.
+   * EmergencyCall renders it itself ("For anything else, call {clinic} on
+   * {number}") — this screen must not draw a second copy of it. */
   secondaryContact?: TriageContact;
   onDownload: () => void;
   /** Only present for the emergency tier — the quiet, non-blocking way back
@@ -203,49 +322,78 @@ interface EscalateOutcomeProps {
 }
 
 function EscalateOutcome({
+  title,
+  lead,
+  advice,
+  reportSentNote,
   contact,
+  prominence,
   secondaryNote,
   secondaryContact,
   onDownload,
   onAddMore,
 }: EscalateOutcomeProps): ReactElement {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-title">Call now</h1>
-        <p className="text-body text-text-muted">{contact.reason}</p>
+    <>
+      <div className={`${CONTENT_CLASSES} dock-safe-tall`}>
+        {/* README §07's rhythm: title, lead 12px below, card 24px below.
+            The stack continues at 24px for the two quiet controls under the
+            card, so nothing below the fold introduces a new spacing. */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-title text-text">{title}</h1>
+            <p className="text-lead text-text">{lead}</p>
+          </div>
+
+          {/* Radius 22, padding 22, 8px gaps. Both lines are `body` role;
+              only the colour changes, because the second line is context
+              rather than a smaller-print aside — it says her answers already
+              went, which is precisely the thing she should not have to
+              squint at. */}
+          <div className="flex flex-col gap-2 rounded-card bg-surface p-[22px]">
+            {advice ? <p className="text-body text-text">{advice}</p> : null}
+            <p className="text-body text-text-muted">{reportSentNote}</p>
+          </div>
+
+          <button type="button" onClick={onDownload} className={CONTENT_CONTROL_CLASSES}>
+            {/* shrink-0: at 200% text the label wraps and the glyph must keep
+                its drawn size rather than being squeezed by the flex row. */}
+            <DownloadSimple size={20} weight="light" className="shrink-0" aria-hidden="true" />
+            {OUTCOME_DOWNLOAD_ESCALATE_LABEL}
+          </button>
+
+          {/* Deliberately not styled as a call to action, and deliberately
+              the last thing in the column: adding more detail is optional
+              and must never look like a required next step. The −8px left
+              margin pulls the text back onto the gutter while the tap target
+              keeps its 56px (the same treatment as "Change this", §06). */}
+          {onAddMore && (
+            <button
+              type="button"
+              onClick={onAddMore}
+              className="tap press -ml-2 self-start px-2 text-caption text-accent"
+            >
+              {EMERGENCY_ADD_MORE_LABEL}
+            </button>
+          )}
+        </div>
       </div>
 
-      <EmergencyCall
-        contact={contact}
-        prominence="lead"
-        secondaryNote={secondaryNote}
-        secondaryContact={secondaryContact}
-      />
-
-      <button
-        type="button"
-        onClick={onDownload}
-        className="tap flex w-full items-center justify-center gap-2 rounded-pill border border-line bg-surface px-6 text-label text-text"
-      >
-        <DownloadSimple size={22} weight="light" aria-hidden="true" />
-        Download your report to bring with you
-      </button>
-
-      <p className="text-caption text-text-muted">
-        Your clinic has also received a copy of this report.
-      </p>
-
-      {onAddMore && (
-        <button
-          type="button"
-          onClick={onAddMore}
-          className="tap self-start px-2 text-caption text-accent"
-        >
-          {EMERGENCY_ADD_MORE_LABEL}
-        </button>
-      )}
-    </div>
+      {/* README §07's dock: the emergency control, then the operator route.
+          The muted "For anything else, call …" row between them is
+          EmergencyCall's own secondary row — it is passed in, never drawn
+          here, so exactly one number ever carries visual weight.
+          OperatorCall is the last child of every dock in the product. */}
+      <Dock variant="tall">
+        <EmergencyCall
+          contact={contact}
+          prominence={prominence}
+          secondaryNote={secondaryNote}
+          secondaryContact={secondaryContact}
+        />
+        <OperatorCall />
+      </Dock>
+    </>
   );
 }
 
@@ -254,14 +402,9 @@ interface RoutineOutcomeProps {
   clinicName: string;
   clinicOpen: boolean;
   clinicOpensAt: string;
-  submittedAt: Date;
+  /** Null when nothing was ever submitted — see this file's header. */
+  submittedAt: Date | null;
   onDownload: () => void;
-}
-
-interface TimelineStep {
-  label: string;
-  state: 'complete' | 'active' | 'pending';
-  note?: string;
 }
 
 function RoutineOutcome({
@@ -272,64 +415,65 @@ function RoutineOutcome({
   submittedAt,
   onDownload,
 }: RoutineOutcomeProps): ReactElement {
-  const expectation = clinicOpen
-    ? `${clinicName} is open now. Your report is in their queue.`
-    : `${clinicName} opens at ${clinicOpensAt}. They'll review it when they're next open.`;
-
-  const timeline: TimelineStep[] = [
-    { label: 'Sent', state: 'complete', note: formatClock(submittedAt) },
-    { label: 'Received by your clinic', state: 'complete' },
-    {
-      label: 'Clinician reviewing',
-      state: clinicOpen ? 'active' : 'pending',
-      note: clinicOpen ? undefined : `From ${clinicOpensAt}`,
-    },
-  ];
-
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-title">Sent to your clinic</h1>
-        <p className="text-lead">
-          Sent to {clinicName} at {formatClock(submittedAt)}.
-        </p>
-      </div>
-
-      <p className="text-body text-text">{expectation}</p>
-
-      <div className="flex flex-col gap-4 rounded-card bg-surface p-[22px]">
-        {timeline.map((item) => (
-          <div key={item.label} className="flex items-center justify-between gap-4">
-            <span
-              className={`text-label ${item.state === 'pending' ? 'text-text-muted' : 'text-text'}`}
-            >
-              {item.label}
-            </span>
-            {item.note && <span className="text-caption text-text-muted">{item.note}</span>}
+    <>
+      <div className={`${CONTENT_CLASSES} dock-safe`}>
+        <div className="flex flex-col gap-6">
+          {/* Title and lead say only what this app witnessed. With no
+              submission behind the screen there is no send to report, so the
+              lead is not rendered at all and the title claims nothing —
+              empty data renders nothing (handoff README, invariants). */}
+          <div className="flex flex-col gap-3">
+            <h1 className="text-title text-text">
+              {submittedAt ? OUTCOME_ROUTINE_TITLE : OUTCOME_ROUTINE_NO_SUBMISSION_TITLE}
+            </h1>
+            {submittedAt && (
+              <p className="text-lead text-text">
+                {outcomeRoutineSentLead(clinicName, formatClock(submittedAt))}
+              </p>
+            )}
           </div>
-        ))}
+
+          {/* The clinic's hours, and nothing about what anyone there is
+              doing with it. The three-row "Sent / Received / Clinician
+              reviewing" card that used to sit under this line asserted a
+              receipt and a reader that nothing in this app confirms. */}
+          <p className="text-body text-text">
+            {outcomeRoutineClinicHours(clinicName, clinicOpen, clinicOpensAt)}
+          </p>
+
+          <button type="button" onClick={onDownload} className={CONTENT_CONTROL_CLASSES}>
+            <DownloadSimple size={20} weight="light" className="shrink-0" aria-hidden="true" />
+            {OUTCOME_DOWNLOAD_ROUTINE_LABEL}
+          </button>
+
+          <p className="text-body text-text">{outcomeRoutineWaitNote(contact.label)}</p>
+
+          {/* The routine state's "call your clinic" affordance. A plain
+              non-emergency control on purpose: nothing about this outcome is
+              an emergency, and EmergencyCall (the one component allowed to
+              use the red token) must never appear here. Same bar treatment
+              as the download above it — no fill, no red, no shadow. It still
+              says what it calls, for a screen reader. */}
+          <a
+            href={telHref(contact.number)}
+            aria-label={callContactAccessibleLabel(contact.label, contact.number)}
+            className={CONTENT_CONTROL_CLASSES}
+          >
+            <PhoneCall size={20} weight="light" className="shrink-0" aria-hidden="true" />
+            {outcomeCallContactLabel(contact.label)}
+          </a>
+        </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onDownload}
-        className="tap flex w-full items-center justify-center gap-2 rounded-pill border border-line bg-surface px-6 text-label text-text"
-      >
-        <DownloadSimple size={22} weight="light" aria-hidden="true" />
-        Download your report
-      </button>
-
-      <p className="text-body text-text">
-        If anything changes while you wait, speak to Kindred again or call {contact.label}.
-      </p>
-
-      <a
-        href={telHref(contact.number)}
-        className="tap flex w-full items-center justify-center gap-2 rounded-pill border border-line bg-surface px-6 text-label text-text"
-      >
-        <PhoneCall size={22} weight="light" aria-hidden="true" />
-        Call {contact.label}
-      </a>
-    </div>
+      {/* Standard dock. In this state "raise a concern" means start another
+          check-in, not call — so this is the one outcome that carries the
+          ordinary Speak-to-Kindred bar, in the same rectangle it occupies on
+          Home and the live view. */}
+      <Dock>
+        <CheckInControl variant="bar" />
+        <OperatorCall />
+      </Dock>
+    </>
   );
 }

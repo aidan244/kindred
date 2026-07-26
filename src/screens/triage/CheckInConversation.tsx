@@ -1,8 +1,8 @@
 /**
  * The conversational check-in surface (design-plan.md §14, amended for the
- * six-category schema in held-build-brief.md placeholder_content). Renders
- * the red-flag questionnaire and the closing free-text beat as one
- * continuous, scrolling exchange of bubbles.
+ * six-category schema in held-build-brief.md placeholder_content; handoff
+ * README screens 03, 04 and 05). Renders the red-flag questionnaire and the
+ * closing free-text beat as one continuous, scrolling exchange of bubbles.
  *
  * GATE DECISION: this is a generalisation of the existing per-question
  * conversation, not a rebuild from scratch. The idioms that already existed
@@ -25,6 +25,21 @@
  * `disposition()` and `getEscalationTier()` are untouched by this file —
  * they read `categoryAnswers` from context after this component writes to
  * it, using the same shapes those already had.
+ *
+ * SURFACE (handoff README 03/04/05). Bot bubbles are `surface` with radii
+ * `22 22 22 14`; hers are `surface-hi` with `22 22 14 22`; both 16px padding,
+ * 85% max width. Option chips are LEFT-aligned and wrap at 12px gaps
+ * (FollowUpInput.tsx). One exchange — question, her answer, "Change this" —
+ * closes up to 8px gaps; separate exchanges stay 16px apart. There is no
+ * tick anywhere: a chosen answer becomes her own message bubble, and the way
+ * to correct it is a text button that says what it does.
+ *
+ * ADD MORE INFO (README 03, "Interactions & Behaviour"): a gate question's
+ * chip row carries a third, accent-labelled chip that replaces the row with
+ * the composer — `moreOpenFor` holds which category's row is open, and the
+ * row and the composer are mutually exclusive. Her words are recorded as
+ * that category's detail; they never stand in for the gate answer itself
+ * (see `GateWords`).
  *
  * EDIT GRANULARITY (documented scope decision): "Change this" exists for a
  * category's gate question and for each of its follow-ups independently —
@@ -51,41 +66,67 @@ import {
   type Dispatch,
   type ReactElement,
   type ReactNode,
-  type RefObject,
   type SetStateAction,
 } from 'react';
 import { revokeVoiceNoteUrl, useAppState } from '../../context/AppStateContext';
 import {
+  CHANGE_THIS_LABEL,
+  CHECK_IN_ADD_MORE_INFO,
+  CHECK_IN_BACK_TO_OPTIONS,
   CHECK_IN_CLOSING_ACK,
   CHECK_IN_CLOSING_INVITE,
+  CHECK_IN_CLOSING_SKIP_LABEL,
+  CHECK_IN_CONTINUE_TO_REVIEW_LABEL,
   CHECK_IN_DETAIL_HINT,
   CHECK_IN_DETAIL_INVITE,
   CHECK_IN_FIRST_ACK,
   CHECK_IN_HARD_STOP_CLOSING_ACK,
   CHECK_IN_OPENING,
   CHECK_IN_RETURN_TO_EMERGENCY_LABEL,
+  COMPOSER_SKIP_LABEL,
+  YES_NO_OPTIONS,
+  changeAnswerAccessibleLabel,
   overlapRecap,
   redFlagCategories,
+  yesNoLabel,
   type RedFlagCategory,
 } from '../../data/clinicalContent';
 import { hasHardStopFired } from '../../logic/escalationTier';
+import { useDockElement } from '../../components/Dock';
 import { usePrefersReducedMotion } from '../../components/usePrefersReducedMotion';
 import { VoiceNoteBubble } from '../../components/VoiceNoteBubble';
-import { Beat } from './Beat';
+import { Beat, STAGGER_MS } from './Beat';
 import { DetailBeat } from './DetailBeat';
 import { FollowUpInput, TapChipRow, formatFollowUpAnswerValue } from './FollowUpInput';
 import type { CategoryAnswer, FollowUpAnswerValue, VoiceNote, YesNo } from '../../types';
 
 /** Mirrors `--dur-beat` (tokens.css) — the silent pause between messages
- * (§14.5), same pattern LiveSurface.tsx uses for DUR_SETTLE_MS. */
+ * (§14.5), same pattern LiveSurface.tsx uses for DUR_SETTLE_MS. This is
+ * rhythm, not motion: it is kept under reduced motion (see Beat.tsx). */
 const BEAT_MS = 700;
-/** A chip row / composer follows its bot message by this much (§14.5). */
-const CHIP_DELAY_MS = 220;
 
-const YES_NO_OPTIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-];
+/* Every string in this file comes from src/data/clinicalContent.ts, including
+ * the yes/no vocabulary. YES_NO_OPTIONS used to be declared here as well as in
+ * FollowUpInput.tsx, byte-identically, with bare "Yes"/"No" literals in the
+ * answer bubbles below on top of that. */
+
+/**
+ * What she said in a gate question's own composer ("Add more info", README
+ * 03), keyed by category id.
+ *
+ * Two jobs, which is why it is held separately from `categoryAnswers`:
+ *
+ *  1. A `CategoryAnswer` cannot exist without a gate answer, and deriving
+ *     one from prose would be the app inferring a clinical answer from free
+ *     text — which it must never do. So her words wait here and are merged,
+ *     verbatim, into the CategoryAnswer the moment she taps Yes or No.
+ *  2. They stay here afterwards as the record of WHERE in the conversation
+ *     she said them, so the bubble keeps the position it was mounted in
+ *     instead of jumping down the transcript once the gate is answered —
+ *     and so the category's own detail beat knows not to show the same
+ *     words a second time further down.
+ */
+type GateWords = Record<string, { detail?: string; voiceNote?: VoiceNote }>;
 
 export interface BackRequest {
   nonce: number;
@@ -93,7 +134,6 @@ export interface BackRequest {
 }
 
 export interface CheckInConversationProps {
-  dockRef: RefObject<HTMLDivElement | null>;
   reaskCategoryId: string | null;
   onChangeThisGate: (categoryId: string) => void;
   onGateReaskResolved: () => void;
@@ -144,15 +184,19 @@ function HerBubble({ children }: { children: ReactNode }): ReactElement {
   );
 }
 
+/** README 04: caption weight, accent, right-aligned, 56px target, 8px
+ * padding. Never a pencil, never a tick — the words say what it does, and
+ * the aria-label names the answer it would change so it is unambiguous out
+ * of visual context. */
 function ChangeThisButton({ label, onClick }: { label: string; onClick: () => void }): ReactElement {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Change your answer to: ${label}`}
-      className="tap self-end px-2 text-caption text-accent"
+      aria-label={changeAnswerAccessibleLabel(label)}
+      className="tap press self-end px-2 text-caption text-accent"
     >
-      Change this
+      {CHANGE_THIS_LABEL}
     </button>
   );
 }
@@ -214,7 +258,6 @@ function gateSequenceComplete(category: RedFlagCategory, answer: CategoryAnswer 
 }
 
 export function CheckInConversation({
-  dockRef,
   reaskCategoryId,
   onChangeThisGate,
   onGateReaskResolved,
@@ -241,6 +284,11 @@ export function CheckInConversation({
     setTriageVoiceNote,
   } = useAppState();
   const reduced = usePrefersReducedMotion();
+  // The one shared dock rectangle (src/components/Dock.tsx), measured — not
+  // owned — by the auto-scroll below. The conversation must never scroll a
+  // message to a position the dock is sitting on top of, and the dock is
+  // mounted once in App, so there is nothing here to thread a ref through.
+  const dockElement = useDockElement();
   const lastRevealedElRef = useRef<HTMLElement | null>(null);
 
   const findAnswer = (categoryId: string): CategoryAnswer | undefined =>
@@ -253,6 +301,12 @@ export function CheckInConversation({
   // unchanged here except "question" -> "category".
   const TOTAL_SLOTS = redFlagCategories.length + 1;
   const [unlockedCategoryCount, setUnlockedCategoryCount] = useState(1);
+
+  /** Which gate question's chip row has been swapped for the composer
+   * (README 03's `moreOpen`, keyed by category so only one can ever be
+   * open). Presentation only — nothing downstream reads it. */
+  const [moreOpenFor, setMoreOpenFor] = useState<string | null>(null);
+  const [gateWords, setGateWords] = useState<GateWords>({});
 
   useEffect(() => {
     setUnlockedCategoryCount((current) => {
@@ -285,14 +339,28 @@ export function CheckInConversation({
       return;
     }
     setUnlockedCategoryCount((current) => Math.min(current, poppedIndex + 1));
+    // The back caret resets the popped category completely, voice note
+    // included — and TriageFlow has already revoked that note's object URL,
+    // so anything still holding the same VoiceNote would be holding a dead
+    // URL. Drop its gate words with it.
+    setGateWords((prev) => {
+      if (!(backRequest.categoryId in prev)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[backRequest.categoryId];
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backRequest?.nonce]);
 
-  // Auto-scroll (§14.6): unchanged from the predecessor.
+  // Auto-scroll (§14.6): unchanged from the predecessor except that the dock
+  // is now read from the shared host instead of a ref threaded down from the
+  // screen. `restLine` is the top of the dock less 24px, so a newly revealed
+  // beat comes to rest clear of it and never behind it.
   const handleReveal = (el: HTMLDivElement): void => {
-    const dockEl = dockRef.current;
-    if (dockEl) {
-      const restLine = dockEl.getBoundingClientRect().top - 24;
+    if (dockElement) {
+      const restLine = dockElement.getBoundingClientRect().top - 24;
       const prev = lastRevealedElRef.current;
       const suppressed = prev ? prev.getBoundingClientRect().bottom - restLine > 48 : false;
       if (!suppressed) {
@@ -316,6 +384,7 @@ export function CheckInConversation({
 
   const handleGateAnswer = (category: RedFlagCategory, value: YesNo, isReask: boolean): void => {
     const existing = findAnswer(category.id);
+    const words = gateWords[category.id];
 
     if (isReask && existing && existing.gateAnswer === value) {
       // No actual change — resolve the reask, keep everything exactly as it
@@ -330,6 +399,11 @@ export function CheckInConversation({
         gateAnswer: 'yes',
         additionalGateAnswers: existing?.additionalGateAnswers ?? [],
         followUpAnswers: [],
+        // Anything she had already written goes with the report on this
+        // path too — the hard stop submits immediately, so this is the last
+        // moment those words could be attached at all.
+        detail: existing?.detail ?? words?.detail,
+        voiceNote: existing?.voiceNote ?? words?.voiceNote,
       };
       setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), finalAnswer]);
       onHardStop(finalAnswer);
@@ -346,8 +420,15 @@ export function CheckInConversation({
       // clean. Only a 'yes' that WAS already 'yes' keeps them — but that
       // case already returned above.
       followUpAnswers: value === 'no' || !wasYes ? [] : existing.followUpAnswers,
-      detail: value === 'no' ? existing?.detail : wasYes ? existing?.detail : undefined,
-      voiceNote: value === 'no' ? existing?.voiceNote : wasYes ? existing?.voiceNote : undefined,
+      // `?? words` merges what she typed into this gate's "Add more info"
+      // composer. It is her detail for this category, never a substitute for
+      // the gate answer itself — and it is re-merged on every later gate
+      // flip, because the bubble stays on screen and what is displayed and
+      // what is reported must not be allowed to disagree.
+      detail: (value === 'no' ? existing?.detail : wasYes ? existing?.detail : undefined) ?? words?.detail,
+      voiceNote:
+        (value === 'no' ? existing?.voiceNote : wasYes ? existing?.voiceNote : undefined) ??
+        words?.voiceNote,
     };
     setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), next]);
     if (isReask) {
@@ -386,6 +467,24 @@ export function CheckInConversation({
 
     const nextAnswer: CategoryAnswer = { ...existing, additionalGateAnswers: [...priorAdditional, 'no'] };
     setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), nextAnswer]);
+  };
+
+  /** Send from a gate question's "Add more info" composer (README 03). Her
+   * words become that category's detail; the composer closes and the chips
+   * come back, because the gate question itself is still unanswered and the
+   * two chips are the only thing that can answer it. */
+  const handleGateDetailSend = (
+    category: RedFlagCategory,
+    text: string,
+    voiceNote: VoiceNote | null
+  ): void => {
+    if (text || voiceNote) {
+      setGateWords((prev) => ({
+        ...prev,
+        [category.id]: { detail: text || undefined, voiceNote: voiceNote ?? undefined },
+      }));
+    }
+    setMoreOpenFor(null);
   };
 
   // ---------------------------------------------------------------------
@@ -456,6 +555,14 @@ export function CheckInConversation({
 
   // ---------------------------------------------------------------------
   // Rendering
+  //
+  // GAP RHYTHM (README 03/04): one exchange closes up to 8px — question, her
+  // answer, "Change this" belong together — while separate exchanges sit
+  // 16px apart. The gap is a className on a container that is ALWAYS
+  // rendered, never a wrapper that appears when an answer does: moving a
+  // beat between two different parents would remount it, and a remounted
+  // beat re-animates, which reads as the conversation saying something
+  // again. See Beat.tsx.
   // ---------------------------------------------------------------------
 
   function renderAdditionalGates(category: RedFlagCategory, answer: CategoryAnswer): ReactNode {
@@ -469,17 +576,25 @@ export function CheckInConversation({
       }
       const isNext = index === answered.length;
       return (
-        <div key={`ag-${category.id}-${index}`} className="flex flex-col gap-4">
+        <div
+          key={`ag-${category.id}-${index}`}
+          className={`mt-2 flex flex-col ${isNext ? 'gap-4' : 'gap-2'}`}
+        >
           <Beat key={`ag-${category.id}-${index}-q`} delayMs={BEAT_MS} reduced={reduced} onReveal={handleReveal}>
             <BotBubble>{prompt}</BotBubble>
           </Beat>
           {isNext ? (
             <Beat
               key={`ag-${category.id}-${index}-chips`}
-              delayMs={BEAT_MS + CHIP_DELAY_MS}
+              delayMs={BEAT_MS + STAGGER_MS}
               reduced={reduced}
+              entrance="children"
               onReveal={handleChipRowReveal}
             >
+              {/* No "Add more info" here: these belong to the hard-stop
+                  category, where the conversation may be cut short between
+                  one question and the next, and inviting her to type in that
+                  gap would sit directly in the path of the interrupt. */}
               <TapChipRow
                 options={YES_NO_OPTIONS}
                 ariaLabel={prompt}
@@ -488,7 +603,7 @@ export function CheckInConversation({
             </Beat>
           ) : (
             <Beat key={`ag-${category.id}-${index}-her`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
-              <HerBubble>{answered[index] === 'yes' ? 'Yes' : 'No'}</HerBubble>
+              <HerBubble>{yesNoLabel(answered[index])}</HerBubble>
             </Beat>
           )}
         </div>
@@ -505,9 +620,10 @@ export function CheckInConversation({
       const reaskKey = `${category.id}::${followUp.id}`;
       const isReasking = reaskFollowUpKey === reaskKey;
       const recap = followUp.overlapsWith && !fuAnswer ? overlapRecap(followUp.overlapsWith, categoryAnswers) : null;
+      const answeredExchange = Boolean(fuAnswer) && !isReasking;
 
       return (
-        <div key={`fu-${followUp.id}`} className="flex flex-col gap-4">
+        <div key={`fu-${followUp.id}`} className={`flex flex-col ${answeredExchange ? 'gap-2' : 'gap-4'}`}>
           <Beat key={`fu-${followUp.id}-q`} delayMs={BEAT_MS} reduced={reduced} onReveal={handleReveal}>
             <BotBubble>
               <div className="flex flex-col gap-2">
@@ -529,8 +645,9 @@ export function CheckInConversation({
           {!isReasking && !fuAnswer && (
             <Beat
               key={`fu-${followUp.id}-input`}
-              delayMs={BEAT_MS + CHIP_DELAY_MS}
+              delayMs={BEAT_MS + STAGGER_MS}
               reduced={reduced}
+              entrance="children"
               onReveal={handleChipRowReveal}
             >
               <FollowUpInput
@@ -560,6 +677,9 @@ export function CheckInConversation({
   function renderDetailBeat(category: RedFlagCategory, answer: CategoryAnswer): ReactNode {
     const hasContent = Boolean(answer.detail) || Boolean(answer.voiceNote);
     const resolved = hasContent || skippedDetailFor.has(category.id);
+    // Anything she already said at this category's gate is already on
+    // screen, higher up, where she said it — this beat must not echo it.
+    const alreadyShown = gateWords[category.id];
 
     if (!resolved) {
       return (
@@ -579,13 +699,14 @@ export function CheckInConversation({
           </Beat>
           <Beat
             key={`${category.id}-detail-composer`}
-            delayMs={BEAT_MS + CHIP_DELAY_MS}
+            delayMs={BEAT_MS + STAGGER_MS}
             reduced={reduced}
             onReveal={handleReveal}
           >
             <DetailBeat
               id={`c-${category.id}`}
-              skipLabel="Skip this"
+              ariaLabel={CHECK_IN_DETAIL_INVITE}
+              skipLabel={COMPOSER_SKIP_LABEL}
               onSend={(text, voiceNote) => handleCategoryDetailSend(category, text, voiceNote)}
               onSkip={() => handleCategoryDetailSkip(category.id)}
             />
@@ -596,12 +717,12 @@ export function CheckInConversation({
 
     return (
       <>
-        {answer.detail && (
+        {answer.detail && answer.detail !== alreadyShown?.detail && (
           <Beat key={`${category.id}-detail-text`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
             <HerBubble>{answer.detail}</HerBubble>
           </Beat>
         )}
-        {answer.voiceNote && (
+        {answer.voiceNote && answer.voiceNote !== alreadyShown?.voiceNote && (
           <Beat key={`${category.id}-voicenote`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
             <VoiceNoteBubble voiceNote={answer.voiceNote} />
           </Beat>
@@ -620,56 +741,106 @@ export function CheckInConversation({
     const followsFirstAck =
       index === 1 && isCategoryResolved(firstCategory, findAnswer(firstCategory.id), skippedDetailFor);
     const gateBubbleDelay = followsFirstAck ? BEAT_MS * 2 : BEAT_MS;
+    const words = gateWords[category.id];
+    const answeredExchange = Boolean(answer) && !isReaskingGate;
 
     return (
       <div key={`c-${category.id}`} className="flex flex-col gap-4">
-        <Beat key={`c-${category.id}-gate`} delayMs={gateBubbleDelay} reduced={reduced} onReveal={handleReveal}>
-          <BotBubble>{category.gateQuestion}</BotBubble>
-        </Beat>
+        <div className={`flex flex-col ${answeredExchange ? 'gap-2' : 'gap-4'}`}>
+          <Beat key={`c-${category.id}-gate`} delayMs={gateBubbleDelay} reduced={reduced} onReveal={handleReveal}>
+            <BotBubble>{category.gateQuestion}</BotBubble>
+          </Beat>
 
-        {isReaskingGate && (
-          <TapChipRow
-            options={YES_NO_OPTIONS}
-            ariaLabel={category.gateQuestion}
-            onMount={handleChipRowReveal}
-            onSelect={(value) => handleGateAnswer(category, value as YesNo, true)}
-          />
-        )}
+          {/* Words from "Add more info", given here, before the gate itself
+              was answered: hers, so hers to see, in her own bubble, straight
+              away — and they STAY in this position once she answers, rather
+              than moving down the transcript, because this is where she said
+              them. They are merged into the CategoryAnswer the moment she
+              taps Yes or No — see handleGateAnswer. */}
+          {words?.detail && (
+            <Beat
+              key={`c-${category.id}-more-text`}
+              delayMs={0}
+              reduced={reduced}
+              onReveal={handleReveal}
+            >
+              <HerBubble>{words.detail}</HerBubble>
+            </Beat>
+          )}
+          {words?.voiceNote && (
+            <Beat
+              key={`c-${category.id}-more-voicenote`}
+              delayMs={0}
+              reduced={reduced}
+              onReveal={handleReveal}
+            >
+              <VoiceNoteBubble voiceNote={words.voiceNote} />
+            </Beat>
+          )}
 
-        {!isReaskingGate && !answer && (
-          <Beat
-            key={`c-${category.id}-gate-chips`}
-            delayMs={gateBubbleDelay + CHIP_DELAY_MS}
-            reduced={reduced}
-            onReveal={handleChipRowReveal}
-          >
+          {isReaskingGate && (
             <TapChipRow
               options={YES_NO_OPTIONS}
               ariaLabel={category.gateQuestion}
-              onSelect={(value) => handleGateAnswer(category, value as YesNo, false)}
+              onMount={handleChipRowReveal}
+              onSelect={(value) => handleGateAnswer(category, value as YesNo, true)}
             />
-          </Beat>
-        )}
+          )}
 
-        {!isReaskingGate && answer && (
-          <>
-            <Beat key={`c-${category.id}-gate-her`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
-              <HerBubble>{answer.gateAnswer === 'yes' ? 'Yes' : 'No'}</HerBubble>
+          {!isReaskingGate && !answer && (
+            <Beat
+              key={`c-${category.id}-gate-chips`}
+              delayMs={gateBubbleDelay + STAGGER_MS}
+              reduced={reduced}
+              entrance="children"
+              onReveal={handleChipRowReveal}
+            >
+              {/* README 03: the chip row and the composer are mutually
+                  exclusive — one rectangle, two states, never both. */}
+              {moreOpenFor === category.id ? (
+                <DetailBeat
+                  id={`gate-${category.id}`}
+                  ariaLabel={category.gateQuestion}
+                  leftActionLabel={CHECK_IN_BACK_TO_OPTIONS}
+                  onLeftAction={() => setMoreOpenFor(null)}
+                  onSend={(text, voiceNote) => handleGateDetailSend(category, text, voiceNote)}
+                />
+              ) : (
+                <TapChipRow
+                  options={YES_NO_OPTIONS}
+                  ariaLabel={category.gateQuestion}
+                  onSelect={(value) => handleGateAnswer(category, value as YesNo, false)}
+                  extraAction={{
+                    label: CHECK_IN_ADD_MORE_INFO,
+                    onSelect: () => setMoreOpenFor(category.id),
+                  }}
+                />
+              )}
             </Beat>
+          )}
 
-            {renderAdditionalGates(category, answer)}
+          {!isReaskingGate && answer && (
+            <>
+              <Beat key={`c-${category.id}-gate-her`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
+                <HerBubble>{yesNoLabel(answer.gateAnswer)}</HerBubble>
+              </Beat>
 
-            {gateSequenceComplete(category, answer) && (
-              <ChangeThisButton label={category.gateQuestion} onClick={() => onChangeThisGate(category.id)} />
-            )}
+              {renderAdditionalGates(category, answer)}
 
-            {answer.gateAnswer === 'yes' && renderFollowUps(category, answer)}
+              {gateSequenceComplete(category, answer) && (
+                <ChangeThisButton label={category.gateQuestion} onClick={() => onChangeThisGate(category.id)} />
+              )}
+            </>
+          )}
+        </div>
 
-            {answer.gateAnswer === 'yes' &&
-              answer.followUpAnswers.length === category.followUps.length &&
-              renderDetailBeat(category, answer)}
-          </>
-        )}
+        {!isReaskingGate && answer && answer.gateAnswer === 'yes' && renderFollowUps(category, answer)}
+
+        {!isReaskingGate &&
+          answer &&
+          answer.gateAnswer === 'yes' &&
+          answer.followUpAnswers.length === category.followUps.length &&
+          renderDetailBeat(category, answer)}
 
         {index === 0 && !isReaskingGate && isCategoryResolved(category, answer, skippedDetailFor) && (
           <Beat key="first-ack" delayMs={BEAT_MS} reduced={reduced} onReveal={handleReveal}>
@@ -698,10 +869,11 @@ export function CheckInConversation({
         </Beat>
 
         {showClosingComposer && (
-          <Beat key="closing-composer" delayMs={BEAT_MS + CHIP_DELAY_MS} reduced={reduced} onReveal={handleReveal}>
+          <Beat key="closing-composer" delayMs={BEAT_MS + STAGGER_MS} reduced={reduced} onReveal={handleReveal}>
             <DetailBeat
               id="closing"
-              skipLabel="Nothing to add"
+              ariaLabel={CHECK_IN_CLOSING_INVITE}
+              skipLabel={CHECK_IN_CLOSING_SKIP_LABEL}
               initialText={closingReask ? triageDescription : ''}
               initialVoiceNote={closingReask ? triageVoiceNote : null}
               onSend={handleClosingSend}
@@ -727,13 +899,15 @@ export function CheckInConversation({
                 {continuingAfterHardStop ? CHECK_IN_HARD_STOP_CLOSING_ACK : CHECK_IN_CLOSING_ACK}
               </BotBubble>
             </Beat>
-            <Beat key="continue-button" delayMs={BEAT_MS + CHIP_DELAY_MS} reduced={reduced} onReveal={handleReveal}>
+            <Beat key="continue-button" delayMs={BEAT_MS + STAGGER_MS} reduced={reduced} onReveal={handleReveal}>
               <button
                 type="button"
                 onClick={continuingAfterHardStop ? onReturnToEmergencyOutcome : onReachedReview}
-                className="tap w-full rounded-pill bg-accent px-6 text-label text-on-accent"
+                className="tap press flex w-full items-center justify-center rounded-pill bg-accent px-6 text-label text-on-accent"
               >
-                {continuingAfterHardStop ? CHECK_IN_RETURN_TO_EMERGENCY_LABEL : 'Continue to review'}
+                {continuingAfterHardStop
+                  ? CHECK_IN_RETURN_TO_EMERGENCY_LABEL
+                  : CHECK_IN_CONTINUE_TO_REVIEW_LABEL}
               </button>
             </Beat>
           </>

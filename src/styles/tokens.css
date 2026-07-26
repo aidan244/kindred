@@ -53,7 +53,11 @@
   --tap-min: 56px; /* she may be shaking; nothing smaller is tappable */
   --gutter: 24px; /* screen side padding at 390px */
   --content-max: 420px; /* content never sprawls wider than this */
-  --dock-clearance: 112px; /* bottom padding every scrolling screen reserves */
+  /* The README's one stated clearance. It is now a FLOOR rather than the
+   * answer: `dock-safe` (src/index.css) takes the max of this and the dock's
+   * measured height, because the standard dock has grown an operator row this
+   * number predates and because no px constant scales with her text size. */
+  --dock-clearance: 112px;
 
   /* Motion: slow and ambient. Nothing ticks, pulses, counts or races. --- */
   --dur-press: 120ms; /* opacity-only press feedback */
@@ -61,7 +65,16 @@
   --dur-enter: 420ms; /* element or sheet entrance */
   --dur-settle: 900ms; /* something coming to rest */
   --dur-breath: 9s; /* the canonical ambient breath cycle */
-  --dur-ring: 7.5s; /* live-view movement ring lifetime */
+  /* The README's motion table lists "breath 9s, ring 7.5s". `--dur-breath`
+   * drives `animate-breath` (the avatar, the pairing mark, the recording ring,
+   * the session ring's glow). `--dur-ring` HAS NO SURFACE IN THIS BUILD: the
+   * component it was written for — the old LiveSurface movement rings — was
+   * deleted in the handoff rewrite, and the README's session ring carries no
+   * animation of its own (it is a static arc; only its glow breathes). Kept so
+   * the motion table is complete and a future ring does not invent a fourth
+   * duration, but nothing reads it. Do not wire it up to the session ring:
+   * that ring must never appear to race or complete. */
+  --dur-ring: 7.5s;
 
   /* Exposed to Tailwind as ease-soft / ease-breath (see @theme). */
   --ease-soft-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* entrances; no overshoot */
@@ -116,6 +129,20 @@
 
   /* The silent pause between conversational messages (§14.5). */
   --dur-beat: 700ms;
+
+  /* Aura drift periods — handoff README "The aura backdrop". Five blooms,
+   * five periods, none a multiple of another, so the composite never
+   * visibly loops. Same law as the old wash's 53/67/89. */
+  --dur-aura-1: 46s;
+  --dur-aura-2: 61s;
+  --dur-aura-3: 74s;
+  --dur-aura-4: 67s;
+  --dur-aura-5: 53s;
+
+  /* Route transition — handoff README "page_transitions". One visual
+   * language for the whole app: opacity plus a short directional slide. */
+  --dur-route: 320ms;
+  --route-slide: 14px; /* inside the README's 12-16px band */
 }
 
 /* --------------------------------------------------------------------------
@@ -155,6 +182,27 @@
   --wash-a2: 0.1;
   --wash-a3: 0.14;
   --wash-a4: 0.22;
+
+  /* Aura blooms — night. -------------------------------------------------
+   * The handoff README tabulates ONE set of fills, which is the day set
+   * (its prototype is a day-theme board); night is listed as "for later".
+   * Night keeps the same five roles and the same geometry, re-pitched for a
+   * dark room: bloom 1 is the lamp itself rather than a warm white, bloom 3
+   * deepens further into the unlit corner, bloom 5 is a raised surface tone
+   * rather than warm sand. Alphas are lower because added light reads much
+   * further on darkness — see the contrast budget note above --wash-*.
+   * Both themes are verified: body text (--text) and metadata
+   * (--text-muted) stay >= 4.5:1 over every bloom. */
+  --aura-1-rgb: 232 180 120; /* the lamp */
+  --aura-1-a: 0.16;
+  --aura-2-rgb: var(--accent-rgb);
+  --aura-2-a: 0.2;
+  --aura-3-rgb: 8 5 7; /* the unlit corner, deepening */
+  --aura-3-a: 0.42;
+  --aura-4-rgb: var(--accent-rgb);
+  --aura-4-a: 0.11;
+  --aura-5-rgb: 53 43 48; /* = --surface-hi, a raised floor */
+  --aura-5-a: 0.72;
 }
 
 /* --------------------------------------------------------------------------
@@ -196,4 +244,18 @@
   --wash-a2: 0.14;
   --wash-a3: 0.2;
   --wash-a4: 0.26;
+
+  /* Aura blooms — day. Verbatim from the handoff README's aura table
+   * ("Fill" column), split into rgb + alpha so a component never writes a
+   * literal colour. Do not adjust: the table is the source of truth. */
+  --aura-1-rgb: 255 246 232;
+  --aura-1-a: 0.72;
+  --aura-2-rgb: 138 87 23; /* = --accent-rgb */
+  --aura-2-a: 0.34;
+  --aura-3-rgb: 28 22 25;
+  --aura-3-a: 0.11;
+  --aura-4-rgb: 138 87 23; /* = --accent-rgb */
+  --aura-4-a: 0.17;
+  --aura-5-rgb: 216 196 182;
+  --aura-5-a: 0.95;
 }

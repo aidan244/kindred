@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@300;400;500&amp;display=swap">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;background:#e7dcd6;}
+body{font-family:'Alegreya Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#2a2226;font-size:19px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+h1,h2,h3,p{margin:0;font-weight:300;}
+button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit;padding:0;}
+a{color:#8a5717;text-decoration:none;}
+a:hover{color:#6f4512;}
+::selection{background-color:rgb(138 87 23 / 0.28);color:#2a2226;}
+:focus-visible{outline:2px solid #8a5717;outline-offset:3px;}
+@keyframes breath{0%,100%{opacity:.62;transform:scale(1);}50%{opacity:1;transform:scale(1.035);}}
+@keyframes ember-breath{0%,100%{opacity:1;}50%{opacity:.92;}}
+@keyframes aura-a{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-54%,-58%) scale(1.16);}}
+@keyframes aura-b{0%,100%{transform:translate(-50%,-50%) scale(1.04);}50%{transform:translate(-44%,-42%) scale(1.2);}}
+@keyframes aura-c{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-58%,-46%) scale(1.24);}}
+@keyframes aura-d{0%,100%{transform:translate(-50%,-50%) scale(1.06);}50%{transform:translate(-46%,-56%) scale(0.92);}}
+</style>
+</helmet>
+
+<div style="padding:72px 72px 96px;display:flex;flex-direction:column;gap:56px;">
+
+<header style="display:flex;flex-direction:column;gap:10px;max-width:720px;">
+<p style="font:600 11px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#665a60;">Kindred · patient app</p>
+<h1 style="font-size:42px;line-height:1.10;letter-spacing:-0.022em;">The seven screens</h1>
+<p style="font-size:19px;line-height:1.55;color:#665a60;text-wrap:pretty;">Day palette, 390×844. Point at anything — element, word, spacing — and tell me what to change.</p>
+</header>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px 48px;">
+
+<!-- 01 HOME -->
+<div data-screen-label="01 Home" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">01 · Home — steady</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+
+
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<h1 style="font-size:42px;line-height:1.10;letter-spacing:-0.022em;">Welcome back, Amara.</h1>
+
+<div style="margin:20px auto 4px;position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center;">
+<div aria-hidden="true" style="position:absolute;width:91px;height:91px;border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.2), transparent);animation:breath 9s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<svg viewBox="0 0 60 104" width="45" height="79" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:relative;color:#8a5717;"><path d="M24 94.2 C 15 84.3, 14 71.4, 19 60.3 C 22.6 52.7, 25.2 47.1, 21.4 40.1 C 18.9 34.6, 17.4 28.2, 23 21.6 C 20 17.1, 21.1 11.6, 27.6 8.1 C 30.9 6.3, 33.7 6.5, 36.1 8.5 C 41.1 12.6, 41.7 18.1, 38 22.6 C 43.1 28.6, 41.9 35.1, 39.5 40.6 C 36 47.6, 38.8 53.1, 42.1 60.6 C 47.2 71.6, 46.2 84.6, 37.2 94.5"></path></svg>
+</div>
+
+<p style="margin-top:20px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Last 24 hours</p>
+<p style="margin-top:4px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Synced 4 minutes ago</p>
+
+<div style="margin-top:20px;border-radius:22px;background:#f6efe9;padding:22px 16px 16px;">
+<sc-if value="{{ bandOnline }}" hint-placeholder-val="{{ true }}">
+<svg viewBox="-6 8 354 100" width="100%" height="100" role="img" aria-label="Baby's heart rate over the last 24 hours">
+<defs><linearGradient id="k-trace-a" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#8a5717" stop-opacity="0.07"></stop><stop offset="0.4" stop-color="#8a5717" stop-opacity="0.28"></stop><stop offset="0.82" stop-color="#8a5717" stop-opacity="0.85"></stop><stop offset="1" stop-color="#8a5717" stop-opacity="1"></stop>
+</linearGradient></defs>
+<polyline points="0,67 2,66.4 4,65.6 6,64.9 8,64.4 10.1,64.1 12.1,64.1 14.1,64.3 16.1,60.4 18.1,56.8 20.1,62.7 22.1,63.9 24.1,63.4 26.2,62.8 28.2,62.2 30.2,48.2 32.2,36.5 34.2,69.4 36.2,64.6 38.2,62.5 40.2,62.8 42.2,62.8 44.3,62.6 46.3,62.2 48.3,61.8 50.3,61.4 52.3,61.2 54.3,56.4 56.3,54.1 58.3,61.4 60.4,62.5 62.4,62.8 64.4,62.9 66.4,62.8 68.4,44.2 70.4,40.2 72.4,70.6 74.4,61.6 76.4,61.6 78.5,61.9 80.5,62.3 82.5,62.7 84.5,63 86.5,63 88.5,62.7 90.5,62.2 92.5,56 94.6,54.1 96.6,60.8 98.6,60.7 100.6,60.8 102.6,61 104.6,61.1 106.6,38.8 108.6,43.2 110.6,70.2 112.7,59.7 114.7,58.9 116.7,58.1 118.7,57.5 120.7,57.2 122.7,57 124.7,57 126.7,56.9 128.8,56.7 130.8,50 132.8,49 134.8,54.7 136.8,53.7 138.8,52.9 140.8,52.2 142.8,51.7 144.8,25.9 146.9,38.4 148.9,61.5 150.9,51.1 152.9,50.7 154.9,50.1 156.9,49.3 158.9,48.4 160.9,47.7 163,47.2 165,46.9 167,46.9 169,40.2 171,41.2 173,47.3 175,47.1 177,46.8 179,46.3 181.1,45.8 183.1,17.4 185.1,37.4 187.1,55.3 189.1,45.7 191.1,46.2 193.1,46.8 195.1,47.3 197.2,47.5 199.2,47.6 201.2,47.4 203.2,47.3 205.2,47.1 207.2,40.2 209.2,42.7 211.2,48.7 213.2,49.5 215.3,50.4 217.3,51.1 219.3,51.7 221.3,22.5 223.3,49.7 225.3,61.5 227.3,52.3 229.3,52.6 231.4,53.2 233.4,54.1 235.4,55 237.4,55.9 239.4,56.7 241.4,57.2 243.4,56.2 245.4,49.9 247.4,53 249.5,57.5 251.5,57.8 253.5,58.2 255.5,58.9 257.5,59.6 259.5,30.4 261.5,62.2 263.5,69.2 265.6,61.1 267.6,60.9 269.6,60.6 271.6,60.3 273.6,60.3 275.6,60.4 277.6,60.8 279.6,61.2 281.6,59.4 283.7,54.1 285.7,58.2 287.7,61.5 289.7,60.9 291.7,60.4 293.7,59.9 295.7,56.4 297.7,30.2 299.8,63.2 301.8,66.4 303.8,60 305.8,60.1 307.8,59.9 309.8,59.4 311.8,58.8 313.8,58.1 315.8,57.5 317.9,57.2 319.9,53.9 321.9,49.4 323.9,54.8 325.9,57.6 327.9,57.7 329.9,57.5 331.9,57.2 334,48.1 336,28.3 338,61.3 340,60 342,55.4" fill="none" stroke="url(#k-trace-a)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<circle cx="342" cy="55.4" r="3.2" fill="#8a5717"></circle>
+</svg>
+</sc-if>
+<sc-if value="{{ bandOffline }}" hint-placeholder-val="{{ false }}">
+<div style="height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#8a5717;"><g transform="rotate(-8 12 12)"><path d="M5.2 9.1 A 7 8 0 1 0 18.9 8.8"></path><path d="M9.6 4.5 Q 12 3.2 14.6 4.7"></path></g></svg>
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">No signal since 06:20. Check the band is on.</span>
+</div>
+</sc-if>
+<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">24 hours ago</span>
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">now</span>
+</div>
+<button style="margin-top:24px;min-height:56px;width:100%;border-radius:22px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;background:#fbf6f1;">
+<span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#8a5717;">Open live view</span>
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="color:#8a5717;"><path d="M198,64V168a6,6,0,0,1-12,0V78.48L68.24,196.24a6,6,0,0,1-8.48-8.48L177.52,70H88a6,6,0,0,1,0-12H192A6,6,0,0,1,198,64Z"></path></svg>
+</button>
+</div>
+</div>
+
+<sc-if value="{{ showPush }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:20px;left:16px;right:16px;">
+<button style="width:100%;padding:22px;border-radius:22px;display:flex;align-items:flex-start;gap:12px;text-align:left;background:#fbf6f1;border:1px solid #e1d4cb;box-shadow:0 10px 30px -12px rgb(90 60 35 / 0.28);">
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="margin-top:4px;flex-shrink:0;color:#8a5717;"><path d="M220.07,176.94C214.41,167.2,206,139.73,206,104a78,78,0,1,0-156,0c0,35.74-8.42,63.2-14.08,72.94A14,14,0,0,0,48,198H90.48a38,38,0,0,0,75,0H208a14,14,0,0,0,12.06-21.06ZM128,218a26,26,0,0,1-25.29-20h50.58A26,26,0,0,1,128,218Zm81.71-33a1.9,1.9,0,0,1-1.7,1H48a1.9,1.9,0,0,1-1.7-1,2,2,0,0,1,0-2C53.87,170,62,139.69,62,104a66,66,0,1,1,132,0c0,35.68,8.14,65.95,15.71,79A2,2,0,0,1,209.71,185Z"></path></svg>
+<span>
+<span style="display:block;font-size:19px;line-height:1.55;font-weight:500;">Kindred</span>
+<span style="display:block;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Worth checking on your baby's movements. Open when you're ready.</span>
+</span>
+</button>
+</div>
+</sc-if>
+
+<div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:184px;pointer-events:none;background:linear-gradient(to top,#efe6e1,rgb(239 230 225 / 0));"></div>
+<div style="position:absolute;left:0;right:0;bottom:16px;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+<button style="width:100%;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:12px;background:#8a5717;color:#efe6e1;box-shadow:0 10px 30px -12px rgb(90 60 35 / 0.28);">
+<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13 C 6.8 17.6, 9.6 19.3, 12 19.1 C 14.6 19.4, 17.3 17.4, 20 13.2"></path><path d="M4 13 L 3.1 10.6"></path><path d="M20 13.2 L 21 10.9"></path><path d="M10.17 4.88 A 3 3 0 0 1 13.65 5.04"></path><path d="M8.83 2.63 A 5.6 5.6 0 0 1 15.17 2.35"></path><path d="M7.59 1.22 A 7.7 7.7 0 0 1 16.43 1.37"></path></svg>
+<span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Speak to Kindred</span>
+</button>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 02 HOME + ALERT -->
+<div data-screen-label="02 Home from alert" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">02 · Home — opened from the notification</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 112px;display:flex;flex-direction:column;gap:24px;overflow:hidden;">
+<h1 style="font-size:42px;line-height:1.10;letter-spacing:-0.022em;">Welcome back, Amara.</h1>
+
+<section style="border-radius:22px;background:#fbf6f1;padding:22px;">
+<div style="display:flex;align-items:flex-start;gap:12px;">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="margin-top:4px;flex-shrink:0;color:#8a5717;"><path d="M220.07,176.94C214.41,167.2,206,139.73,206,104a78,78,0,1,0-156,0c0,35.74-8.42,63.2-14.08,72.94A14,14,0,0,0,48,198H90.48a38,38,0,0,0,75,0H208a14,14,0,0,0,12.06-21.06ZM128,218a26,26,0,0,1-25.29-20h50.58A26,26,0,0,1,128,218Zm81.71-33a1.9,1.9,0,0,1-1.7,1H48a1.9,1.9,0,0,1-1.7-1,2,2,0,0,1,0-2C53.87,170,62,139.69,62,104a66,66,0,1,1,132,0c0,35.68,8.14,65.95,15.71,79A2,2,0,0,1,209.71,185Z"></path></svg>
+<div style="display:flex;flex-direction:column;gap:8px;">
+<p style="font-size:19px;line-height:1.55;font-weight:400;">Worth checking on your baby's movements.</p>
+<p style="font-size:19px;line-height:1.55;font-weight:400;">You know your baby best. Speak to Kindred if anything feels different.</p>
+</div>
+</div>
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">
+<button style="height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#8a5717;color:#efe6e1;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;gap:12px;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13 C 6.8 17.6, 9.6 19.3, 12 19.1 C 14.6 19.4, 17.3 17.4, 20 13.2"></path><path d="M4 13 L 3.1 10.6"></path><path d="M20 13.2 L 21 10.9"></path><path d="M10.17 4.88 A 3 3 0 0 1 13.65 5.04"></path><path d="M8.83 2.63 A 5.6 5.6 0 0 1 15.17 2.35"></path><path d="M7.59 1.22 A 7.7 7.7 0 0 1 16.43 1.37"></path></svg>Speak to Kindred</button>
+<button style="height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#f6efe9;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Dismiss</button>
+</div>
+</section>
+
+<div style="display:flex;flex-direction:column;gap:4px;">
+<p style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Last 24 hours</p>
+<p style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Synced 4 minutes ago</p>
+</div>
+
+<div style="border-radius:22px;background:#f6efe9;padding:22px 16px 16px;">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+<div style="display:flex;align-items:baseline;gap:8px;">
+<span style="font-size:56px;line-height:1;letter-spacing:-0.03em;font-weight:300;">142</span>
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">bpm</span>
+</div>
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Baby's heart rate</span>
+</div>
+<svg viewBox="-6 8 354 100" width="100%" height="100" role="img" aria-label="Baby's heart rate over the last 24 hours">
+<defs><linearGradient id="k-trace-b" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#8a5717" stop-opacity="0.07"></stop><stop offset="0.4" stop-color="#8a5717" stop-opacity="0.28"></stop><stop offset="0.82" stop-color="#8a5717" stop-opacity="0.85"></stop><stop offset="1" stop-color="#8a5717" stop-opacity="1"></stop>
+</linearGradient></defs>
+<polyline points="0,67 2,66.4 4,65.6 6,64.9 8,64.4 10.1,64.1 12.1,64.1 14.1,64.3 16.1,60.4 18.1,56.8 20.1,62.7 22.1,63.9 24.1,63.4 26.2,62.8 28.2,62.2 30.2,48.2 32.2,36.5 34.2,69.4 36.2,64.6 38.2,62.5 40.2,62.8 42.2,62.8 44.3,62.6 46.3,62.2 48.3,61.8 50.3,61.4 52.3,61.2 54.3,56.4 56.3,54.1 58.3,61.4 60.4,62.5 62.4,62.8 64.4,62.9 66.4,62.8 68.4,44.2 70.4,40.2 72.4,70.6 74.4,61.6 76.4,61.6 78.5,61.9 80.5,62.3 82.5,62.7 84.5,63 86.5,63 88.5,62.7 90.5,62.2 92.5,56 94.6,54.1 96.6,60.8 98.6,60.7 100.6,60.8 102.6,61 104.6,61.1 106.6,38.8 108.6,43.2 110.6,70.2 112.7,59.7 114.7,58.9 116.7,58.1 118.7,57.5 120.7,57.2 122.7,57 124.7,57 126.7,56.9 128.8,56.7 130.8,50 132.8,49 134.8,54.7 136.8,53.7 138.8,52.9 140.8,52.2 142.8,51.7 144.8,25.9 146.9,38.4 148.9,61.5 150.9,51.1 152.9,50.7 154.9,50.1 156.9,49.3 158.9,48.4 160.9,47.7 163,47.2 165,46.9 167,46.9 169,40.2 171,41.2 173,47.3 175,47.1 177,46.8 179,46.3 181.1,45.8 183.1,17.4 185.1,37.4 187.1,55.3 189.1,45.7 191.1,46.2 193.1,46.8 195.1,47.3 197.2,47.5 199.2,47.6 201.2,47.4 203.2,47.3 205.2,47.1 207.2,40.2 209.2,42.7 211.2,48.7 213.2,49.5 215.3,50.4 217.3,51.1 219.3,51.7 221.3,22.5 223.3,49.7 225.3,61.5 227.3,52.3 229.3,52.6 231.4,53.2 233.4,54.1 235.4,55 237.4,55.9 239.4,56.7 241.4,57.2 243.4,56.2 245.4,49.9 247.4,53 249.5,57.5 251.5,57.8 253.5,58.2 255.5,58.9 257.5,59.6 259.5,30.4 261.5,62.2 263.5,69.2 265.6,61.1 267.6,60.9 269.6,60.6 271.6,60.3 273.6,60.3 275.6,60.4 277.6,60.8 279.6,61.2 281.6,59.4 283.7,54.1 285.7,58.2 287.7,61.5 289.7,60.9 291.7,60.4 293.7,59.9 295.7,56.4 297.7,30.2 299.8,63.2 301.8,66.4 303.8,60 305.8,60.1 307.8,59.9 309.8,59.4 311.8,58.8 313.8,58.1 315.8,57.5 317.9,57.2 319.9,53.9 321.9,49.4 323.9,54.8 325.9,57.6 327.9,57.7 329.9,57.5 331.9,57.2 334,48.1 336,28.3 338,61.3 340,60 342,55.4" fill="none" stroke="url(#k-trace-b)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<circle cx="342" cy="55.4" r="3.2" fill="#8a5717"></circle>
+</svg>
+<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">24 hours ago</span>
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">now</span>
+</div>
+</div>
+</div>
+<div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:184px;pointer-events:none;background:linear-gradient(to top,#efe6e1,rgb(239 230 225 / 0));"></div>
+<div style="position:absolute;left:0;right:0;bottom:16px;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+<button style="width:100%;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:12px;background:#f6efe9;border:1px solid #e1d4cb;box-shadow:0 10px 30px -12px rgb(90 60 35 / 0.28);">
+<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13 C 6.8 17.6, 9.6 19.3, 12 19.1 C 14.6 19.4, 17.3 17.4, 20 13.2"></path><path d="M4 13 L 3.1 10.6"></path><path d="M20 13.2 L 21 10.9"></path><path d="M10.17 4.88 A 3 3 0 0 1 13.65 5.04"></path><path d="M8.83 2.63 A 5.6 5.6 0 0 1 15.17 2.35"></path><path d="M7.59 1.22 A 7.7 7.7 0 0 1 16.43 1.37"></path></svg>
+<span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Speak to Kindred</span>
+</button>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 03 CHECK-IN GATE -->
+<div data-screen-label="03 Check-in gate" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">03 · Check-in — the first gate</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;padding:48px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(to top,#efe6e1 66%,rgb(239 230 225 / 0));">
+<a href="tel:02079460523" style="min-height:64px;width:100%;border-radius:999px;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px;background:#b3302a;color:#efe6e1;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>{{ clinicLabel }}</a>
+<span style="display:flex;align-items:center;gap:8px;text-align:center;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>Heavy bleeding, collapse, or fitting: call 999</span>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;gap:16px;">
+<button aria-label="Back" style="min-height:56px;min-width:56px;margin-left:-16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M164.24,203.76a6,6,0,1,1-8.48,8.48l-80-80a6,6,0,0,1,0-8.48l80-80a6,6,0,0,1,8.48,8.48L88.49,128Z"></path></svg></button>
+<div role="progressbar" aria-label="Check-in progress" style="flex:1;height:3px;border-radius:999px;background:#e1d4cb;overflow:hidden;"><div style="height:100%;width:16%;border-radius:999px;background:#8a5717;"></div></div>
+</div>
+
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:16px;">
+<div style="margin-right:auto;max-width:85%;background:#f6efe9;padding:16px;border-radius:22px 22px 22px 14px;font-size:19px;line-height:1.55;">A few short questions, then you can add anything in your own words.</div>
+<div style="margin-right:auto;max-width:85%;background:#f6efe9;padding:16px;border-radius:22px 22px 22px 14px;font-size:19px;line-height:1.55;">Are you bleeding?</div>
+<sc-if value="{{ moreClosed }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px;">
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Yes</button>
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">No</button>
+<button onClick="{{ openMore }}" style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#8a5717;">Add more info</button>
+</div>
+</sc-if>
+<sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+<div style="border-radius:22px;border:1px solid #e1d4cb;background:#f6efe9;padding:16px;">
+<div style="font-size:19px;line-height:1.55;color:#665a60;">Type here</div>
+<div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+<button aria-label="Record a voice note" style="min-height:56px;min-width:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fbf6f1;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,174a46.06,46.06,0,0,0,46-46V64a46,46,0,0,0-92,0v64A46.06,46.06,0,0,0,128,174ZM94,64a34,34,0,0,1,68,0v64a34,34,0,0,1-68,0Zm40,141.75V240a6,6,0,0,1-12,0V205.75A78.09,78.09,0,0,1,50,128a6,6,0,0,1,12,0,66,66,0,0,0,132,0,6,6,0,0,1,12,0A78.09,78.09,0,0,1,134,205.75Z"></path></svg></button>
+<div style="display:flex;align-items:center;gap:16px;">
+<button onClick="{{ closeMore }}" style="min-height:56px;padding:0 8px;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#8a5717;">Back&nbsp; &nbsp; &nbsp; &nbsp;&nbsp;</button>
+<button style="min-height:56px;border-radius:999px;display:flex;align-items:center;gap:8px;padding:0 24px;background:#8a5717;color:#efe6e1;opacity:.55;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M230.88,115.69l-168-95.88a14,14,0,0,0-20,16.87L73.66,128,42.81,219.33A14,14,0,0,0,56,238a14.15,14.15,0,0,0,6.93-1.83L230.84,140.1a14,14,0,0,0,0-24.41Zm-5.95,14L57,225.73a2,2,0,0,1-2.86-2.42.42.42,0,0,0,0-.1L84.3,134H144a6,6,0,0,0,0-12H84.3L54.17,32.8a.3.3,0,0,0,0-.1,1.87,1.87,0,0,1,.6-2.2A1.85,1.85,0,0,1,57,30.25l168,95.89a1.93,1.93,0,0,1,1,1.74A2,2,0,0,1,224.93,129.66Z"></path></svg>Send</button>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+</div></div>
+</div>
+
+<!-- 04 FOLLOW-UP -->
+<div data-screen-label="04 Follow-up" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">04 · Check-in — answered, follow-up</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;gap:16px;">
+<button aria-label="Back" style="min-height:56px;min-width:56px;margin-left:-16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M164.24,203.76a6,6,0,1,1-8.48,8.48l-80-80a6,6,0,0,1,0-8.48l80-80a6,6,0,0,1,8.48,8.48L88.49,128Z"></path></svg></button>
+<div role="progressbar" aria-label="Check-in progress" style="flex:1;height:3px;border-radius:999px;background:#e1d4cb;overflow:hidden;"><div style="height:100%;width:33%;border-radius:999px;background:#8a5717;"></div></div>
+</div>
+
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:8px;">
+<div style="margin-right:auto;max-width:85%;background:#f6efe9;padding:16px;border-radius:22px 22px 22px 14px;font-size:19px;line-height:1.55;">Are you bleeding?</div>
+<div style="margin-left:auto;max-width:85%;background:#fbf6f1;padding:16px;border-radius:22px 22px 14px 22px;font-size:19px;line-height:1.55;">Yes</div>
+<button aria-label="Change your answer to: Are you bleeding?" style="align-self:flex-end;min-height:56px;padding:0 8px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#8a5717;">Change this</button>
+</div>
+
+<div style="margin-top:8px;display:flex;flex-direction:column;gap:16px;">
+<div style="margin-right:auto;max-width:85%;background:#f6efe9;padding:16px;border-radius:22px 22px 22px 14px;font-size:19px;line-height:1.55;">How much?</div>
+<div style="display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px;">
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Spotting</button>
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Like a period</button>
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Heavier than a period</button>
+<button style="min-height:56px;border-radius:999px;padding:0 24px;background:#fbf6f1;border:1px solid #e1d4cb;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Soaking a pad within an hour</button>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:48px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(to top,#efe6e1 66%,rgb(239 230 225 / 0));">
+<a href="tel:02079460523" style="min-height:64px;width:100%;border-radius:999px;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px;background:#b3302a;color:#efe6e1;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>{{ clinicLabel }}</a>
+<span style="display:flex;align-items:center;gap:8px;text-align:center;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>Heavy bleeding, collapse, or fitting: call 999</span>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 05 DETAIL BEAT -->
+<div data-screen-label="05 Detail beat" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">05 · Check-in — in her own words</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;gap:16px;">
+<button aria-label="Back" style="min-height:56px;min-width:56px;margin-left:-16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M164.24,203.76a6,6,0,1,1-8.48,8.48l-80-80a6,6,0,0,1,0-8.48l80-80a6,6,0,0,1,8.48,8.48L88.49,128Z"></path></svg></button>
+<div role="progressbar" aria-label="Check-in progress" style="flex:1;height:3px;border-radius:999px;background:#e1d4cb;overflow:hidden;"><div style="height:100%;width:83%;border-radius:999px;background:#8a5717;"></div></div>
+</div>
+
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:16px;">
+<div style="margin-right:auto;max-width:85%;background:#f6efe9;padding:16px;border-radius:22px 22px 22px 14px;display:flex;flex-direction:column;gap:8px;">
+<span style="font-size:19px;line-height:1.55;">Anything you want to add about that?</span>
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Type it, or record a voice note. This is optional.</span>
+</div>
+
+<div style="border-radius:22px;border:1px solid #e1d4cb;background:#f6efe9;padding:16px;">
+<div style="font-size:19px;line-height:1.55;color:#665a60;">Type here</div>
+<div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+<button aria-label="Record a voice note" style="min-height:56px;min-width:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fbf6f1;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,174a46.06,46.06,0,0,0,46-46V64a46,46,0,0,0-92,0v64A46.06,46.06,0,0,0,128,174ZM94,64a34,34,0,0,1,68,0v64a34,34,0,0,1-68,0Zm40,141.75V240a6,6,0,0,1-12,0V205.75A78.09,78.09,0,0,1,50,128a6,6,0,0,1,12,0,66,66,0,0,0,132,0,6,6,0,0,1,12,0A78.09,78.09,0,0,1,134,205.75Z"></path></svg></button>
+<div style="display:flex;align-items:center;gap:16px;">
+<button style="min-height:56px;padding:0 8px;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#8a5717;">Skip this</button>
+<button style="min-height:56px;border-radius:999px;display:flex;align-items:center;gap:8px;padding:0 24px;background:#8a5717;color:#efe6e1;opacity:.55;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M230.88,115.69l-168-95.88a14,14,0,0,0-20,16.87L73.66,128,42.81,219.33A14,14,0,0,0,56,238a14.15,14.15,0,0,0,6.93-1.83L230.84,140.1a14,14,0,0,0,0-24.41Zm-5.95,14L57,225.73a2,2,0,0,1-2.86-2.42.42.42,0,0,0,0-.1L84.3,134H144a6,6,0,0,0,0-12H84.3L54.17,32.8a.3.3,0,0,0,0-.1,1.87,1.87,0,0,1,.6-2.2A1.85,1.85,0,0,1,57,30.25l168,95.89a1.93,1.93,0,0,1,1,1.74A2,2,0,0,1,224.93,129.66Z"></path></svg>Send</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:48px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(to top,#efe6e1 66%,rgb(239 230 225 / 0));">
+<a href="tel:02079460523" style="min-height:64px;width:100%;border-radius:999px;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px;background:#b3302a;color:#efe6e1;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>{{ clinicLabel }}</a>
+<span style="display:flex;align-items:center;gap:8px;text-align:center;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>Heavy bleeding, collapse, or fitting: call 999</span>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 06 REVIEW -->
+<div data-screen-label="06 Review" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">06 · Review — what goes to the clinic</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<h1 style="font-size:30px;line-height:1.20;letter-spacing:-0.016em;">Check everything</h1>
+<p style="margin-top:12px;font-size:23px;line-height:1.42;letter-spacing:-0.006em;font-weight:400;text-wrap:pretty;">This is what goes to your clinic. You can change any answer.</p>
+
+<div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">
+<div style="border-radius:22px;background:#f6efe9;padding:16px;display:flex;flex-direction:column;gap:4px;">
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Bleeding</span>
+<span style="font-size:19px;line-height:1.55;">Yes — like a period, since this morning</span>
+<button style="align-self:flex-start;min-height:56px;margin-left:-8px;padding:0 8px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#8a5717;">Change this</button>
+</div>
+<div style="border-radius:22px;background:#f6efe9;padding:16px;display:flex;flex-direction:column;gap:4px;">
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Movements</span>
+<span style="font-size:19px;line-height:1.55;">Fewer than usual today</span>
+<button style="align-self:flex-start;min-height:56px;margin-left:-8px;padding:0 8px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#8a5717;">Change this</button>
+</div>
+<div style="border-radius:22px;background:#f6efe9;padding:16px;display:flex;flex-direction:column;gap:4px;">
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">In your own words</span>
+<span style="font-size:19px;line-height:1.55;">It started after I got up. No pain, just the bleeding.</span>
+<button style="align-self:flex-start;min-height:56px;margin-left:-8px;padding:0 8px;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#8a5717;">Change this</button>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:48px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(to top,#efe6e1 66%,rgb(239 230 225 / 0));">
+<button style="width:100%;height:60px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#8a5717;color:#efe6e1;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;box-shadow:0 10px 30px -12px rgb(90 60 35 / 0.28);">Send this to your clinic</button>
+<span style="text-align:center;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">A midwife reads it. If it can't wait, call instead.</span>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 07 OUTCOME -->
+<div data-screen-label="07 Outcome" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">07 · Outcome — emergency tier</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<h1 style="font-size:30px;line-height:1.20;letter-spacing:-0.016em;">Please call 999 now.</h1>
+<p style="margin-top:12px;font-size:23px;line-height:1.42;letter-spacing:-0.006em;font-weight:400;text-wrap:pretty;">Tell them you are 31 weeks pregnant and bleeding heavily.</p>
+<div style="margin-top:24px;border-radius:22px;background:#f6efe9;padding:22px;display:flex;flex-direction:column;gap:8px;">
+<p style="font-size:19px;line-height:1.55;font-weight:400;">Stay where you are, lie on your left side, and unlock the front door if you can.</p>
+<p style="font-size:19px;line-height:1.55;font-weight:400;color:#665a60;">Your answers have gone to Thornfield Maternity. They know you are calling.</p>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:48px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:linear-gradient(to top,#efe6e1 66%,rgb(239 230 225 / 0));">
+<a href="tel:999" style="min-height:64px;width:100%;border-radius:999px;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:#b3302a;color:#efe6e1;">
+<span style="display:flex;align-items:center;gap:12px;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>Call 999</span>
+<span style="font-size:30px;line-height:1.20;letter-spacing:-0.016em;">999</span>
+</a>
+<span style="display:flex;align-items:center;gap:8px;text-align:center;font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg>For anything else, call Thornfield Maternity on 020 7946 0523</span>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+<!-- 08 LIVE VIEW -->
+<div data-screen-label="08 Live view" style="display:flex;flex-direction:column;gap:14px;">
+<div style="font:600 12px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#665a60;">08 · Live view — listening now</div>
+<div style="position:relative;width:390px;height:844px;border-radius:44px;overflow:hidden;background:#efe6e1;border:1px solid #e1d4cb;box-shadow:0 26px 64px -28px rgb(90 60 35 / 0.45);">
+<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+<div style="position:absolute;width:170%;height:58%;left:50%;top:30%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(255 246 232 / 0.72), rgb(255 246 232 / 0) 76%);filter:blur(34px);animation:aura-a 46s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:26%;top:66%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.34), rgb(138 87 23 / 0) 72%);filter:blur(58px);animation:aura-b 61s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:120%;height:44%;left:82%;top:18%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(28 22 25 / 0.11), rgb(28 22 25 / 0) 70%);filter:blur(52px);animation:aura-c 74s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:112%;height:38%;left:16%;top:8%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.17), rgb(138 87 23 / 0) 70%);filter:blur(44px);animation:aura-d 67s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<div style="position:absolute;width:150%;height:52%;left:62%;top:96%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side, rgb(216 196 182 / 0.95), rgb(216 196 182 / 0) 72%);filter:blur(46px);animation:aura-d 53s cubic-bezier(.37,0,.63,1) infinite;"></div>
+</div>
+<div style="position:relative;height:100%;padding:32px 24px 0;display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;gap:16px;">
+<button aria-label="Back" style="min-height:56px;min-width:56px;margin-left:-16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#665a60;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M164.24,203.76a6,6,0,1,1-8.48,8.48l-80-80a6,6,0,0,1,0-8.48l80-80a6,6,0,0,1,8.48,8.48L88.49,128Z"></path></svg></button>
+<h1 style="font-size:30px;line-height:1.20;letter-spacing:-0.016em;">Live view</h1>
+</div>
+
+<div style="margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+<span style="font-size:96px;line-height:1;letter-spacing:-0.032em;font-weight:300;">142</span>
+<span style="font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">bpm · baby's heart rate</span>
+</div>
+
+<svg viewBox="-6 20 354 130" width="100%" height="150" role="img" aria-label="Baby's heart rate, listening live" style="margin-top:24px;">
+<defs><linearGradient id="k-trace-live" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#8a5717" stop-opacity="0.06"></stop><stop offset="0.3" stop-color="#8a5717" stop-opacity="0.34"></stop><stop offset="0.6" stop-color="#8a5717" stop-opacity="0.95"></stop><stop offset="0.621" stop-color="#8a5717" stop-opacity="0.95"></stop><stop offset="0.622" stop-color="#665a60" stop-opacity="0.3"></stop><stop offset="1" stop-color="#665a60" stop-opacity="0.2"></stop>
+</linearGradient></defs>
+<polyline points="0,119 1.8,118.6 3.6,117.9 5.4,117.1 7.2,116.4 9,116 10.8,116.1 12.6,111.3 14.4,102.8 16.2,103.6 18,113.4 19.8,118.7 21.6,118.6 23.4,118.1 25.2,117.2 27,116.2 28.8,115.3 30.6,108.3 32.4,57.2 34.2,74.6 36,124.9 37.8,133.3 39.6,115 41.4,115 43.2,114.6 45,113.8 46.8,112.6 48.6,111.2 50.4,109.8 52.2,108.5 54,107.6 55.8,107.1 57.6,106.8 59.4,106.8 61.2,103.4 63,93 64.8,90.9 66.6,98 68.4,103.3 70.2,101.6 72,99.9 73.8,98.4 75.6,97.2 77.4,96.3 79.2,95.9 81,42.5 82.8,49.2 84.6,102 86.4,114.6 88.2,93.9 90,92.6 91.8,91.1 93.6,89.5 95.4,88.1 97.2,87 99,86.3 100.8,86.1 102.6,86.2 104.4,86.5 106.2,86.7 108,86.7 109.8,84.8 111.6,73.3 113.4,69.5 115.2,75.5 117,82.9 118.8,82.3 120.6,82.2 122.4,82.5 124.2,83.1 126,84.1 127.8,85 129.6,37.8 131.4,34.3 133.2,89 135,106.5 136.8,88.3 138.6,85.7 140.4,85.7 142.2,86.1 144,86.9 145.8,88.1 147.6,89.6 149.4,91.1 151.2,92.5 153,93.6 154.8,94.3 156.6,94.7 158.4,94.9 160.2,83.8 162,79.8 163.8,86.1 165.6,96.9 167.4,98.3 169.2,99.9 171,101.6 172.8,103.2 174.6,104.4 176.4,105.3 178.2,64.3 180,49.8 181.8,102.2 183.6,125.9 185.4,112.8 187.2,107 189,108 190.8,109.3 192.6,110.7 194.4,112 196.2,113 198,113.5 199.8,113.7 201.6,113.4 203.4,113 205.2,112.5 207,112.3 208.8,102.4 210.6,97.2 212.4,102.3 214.2,114.2 216,115 217.8,115.5 219.6,115.7 221.4,115.3 223.2,114.6 225,113.7 226.8,78.9 228.6,53.1 230.4,97.9 232.2,129.9 234,121.7 235.8,111.8 237.6,112.2 239.4,112.4 241.2,112.3 243,111.8 244.8,110.9 246.6,109.8 248.4,108.5 250.2,107.5 252,106.7 253.8,106.3 255.6,106.3 257.4,98.2 259.2,91.7 261,95 262.8,106 264.6,107.1 266.4,106.4 268.2,105.4 270,104.3 271.8,103.4 273.6,102.7 275.4,77.3 277.2,42.8 279,80.3 280.8,120.4 282.6,118.1 284.4,104.8 286.2,104.9 288,104.6 289.8,104.1 291.6,103.3 293.4,102.6 295.2,102.2 297,102.1 298.8,102.5 300.6,103.2 302.4,104.1 304.2,105 306,99 307.8,91.3 309.6,92.8 311.4,102.6 313.2,105.3 315,104.7 316.8,104.3 318.6,104.2 320.4,104.5 322.2,105.1 324,90 325.8,47.7 327.6,76 329.4,121.8 331.2,124.4 333,107.5 334.8,106.8 336.6,105.9 338.4,105.2 340.2,104.7 342,104.5" fill="none" stroke="url(#k-trace-live)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<circle cx="212.4" cy="102.3" r="3.6" fill="#8a5717"></circle>
+</svg>
+
+<div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">2 minutes ago</span>
+<span style="font-size:14px;line-height:1.35;letter-spacing:.05em;color:#665a60;">now</span>
+</div>
+
+<div style="margin-top:28px;position:relative;width:132px;height:132px;align-self:center;">
+<div aria-hidden="true" style="position:absolute;inset:-14px;border-radius:50%;background:radial-gradient(closest-side, rgb(138 87 23 / 0.2), rgb(138 87 23 / 0) 72%);animation:breath 9s cubic-bezier(.37,0,.63,1) infinite;"></div>
+<svg viewBox="0 0 132 132" width="132" height="132" fill="none" aria-hidden="true" style="position:absolute;inset:0;">
+<circle cx="66" cy="66" r="58" stroke="#e1d4cb" stroke-width="3"></circle>
+<circle cx="66" cy="66" r="58" stroke="#8a5717" stroke-width="3" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="277" transform="rotate(-90 66 66)"></circle>
+</svg>
+<button style="position:absolute;inset:12px;border-radius:50%;background:#fbf6f1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+<span style="font-size:23px;line-height:1.42;letter-spacing:-0.006em;">04:11</span>
+<span aria-label="Pause listening" style="display:flex;gap:4px;"><span style="width:4px;height:16px;border-radius:2px;background:#8a5717;display:block;"></span><span style="width:4px;height:16px;border-radius:2px;background:#8a5717;display:block;"></span></span>
+</button>
+</div>
+<p style="margin-top:16px;text-align:center;font-size:16px;line-height:1.45;letter-spacing:.012em;color:#665a60;">Listening since 09:14. The band is connected.</p>
+</div>
+<div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:184px;pointer-events:none;background:linear-gradient(to top,#efe6e1,rgb(239 230 225 / 0));"></div>
+<div style="position:absolute;left:0;right:0;bottom:16px;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+<button style="width:100%;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:12px;background:#f6efe9;border:1px solid #e1d4cb;box-shadow:0 10px 30px -12px rgb(90 60 35 / 0.28);">
+<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13 C 6.8 17.6, 9.6 19.3, 12 19.1 C 14.6 19.4, 17.3 17.4, 20 13.2"></path><path d="M4 13 L 3.1 10.6"></path><path d="M20 13.2 L 21 10.9"></path><path d="M10.17 4.88 A 3 3 0 0 1 13.65 5.04"></path><path d="M8.83 2.63 A 5.6 5.6 0 0 1 15.17 2.35"></path><path d="M7.59 1.22 A 7.7 7.7 0 0 1 16.43 1.37"></path></svg>
+<span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Speak to Kindred</span>
+</button>
+<a href="tel:08000551122" style="min-height:56px;width:100%;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a5717;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="flex-shrink:0;"><path d="M146.2,46.45a6,6,0,0,1,7.35-4.25,84.24,84.24,0,0,1,60.25,60.25,6,6,0,0,1-4.25,7.35,5.94,5.94,0,0,1-1.55.2,6,6,0,0,1-5.8-4.45A72.34,72.34,0,0,0,150.45,53.8,6,6,0,0,1,146.2,46.45ZM142.45,85.8C157,89.68,166.32,99,170.2,113.55A6,6,0,0,0,176,118a5.94,5.94,0,0,0,1.55-.2,6,6,0,0,0,4.25-7.35c-5-18.71-17.54-31.25-36.25-36.25a6,6,0,1,0-3.1,11.6Zm79.44,97A54.25,54.25,0,0,1,168,230C89.7,230,26,166.3,26,88A54.25,54.25,0,0,1,73.17,34.11,14,14,0,0,1,87.73,42.5l21.1,47.1a14,14,0,0,1-1.12,13.28,6,6,0,0,1-.42.57L86.22,128.51a1.89,1.89,0,0,0,0,1.67c7.66,15.68,24.1,32,40,39.65a1.88,1.88,0,0,0,1.68-.06l24.69-21a4.81,4.81,0,0,1,.56-.42,14,14,0,0,1,13.28-1.22l47.24,21.17A14,14,0,0,1,221.89,182.83ZM210,181.32a2,2,0,0,0-1.21-2l-47.25-21.17a1.92,1.92,0,0,0-1.6.1l-24.68,21c-.18.15-.37.29-.56.42a14,14,0,0,1-13.77,1c-18.36-8.87-36.66-27-45.53-45.19a14,14,0,0,1,.91-13.73,4.73,4.73,0,0,1,.43-.57L97.79,96.09a2,2,0,0,0,0-1.67L76.74,47.31A2,2,0,0,0,74.9,46h-.23A42.24,42.24,0,0,0,38,88c0,71.68,58.32,130,130,130A42.24,42.24,0,0,0,210,181.32Z"></path></svg><span style="font-size:19px;line-height:1.25;letter-spacing:.005em;font-weight:500;">Call an operator</span></a>
+</div>
+</div>
+</div>
+
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;clinicHours&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State&quot;,&quot;label&quot;:&quot;Within clinic hours&quot;},&quot;showPush&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State&quot;,&quot;label&quot;:&quot;Show push notification on Home&quot;},&quot;bandOffline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State&quot;,&quot;label&quot;:&quot;Band has no signal&quot;}}">
+class Component extends DCLogic {
+  state = { moreOpen: false };
+  renderVals() {
+    const inHours = this.props.clinicHours ?? true;
+    const offline = this.props.bandOffline ?? false;
+    return {
+      clinicLabel: inHours ? 'Call the clinic' : 'Call the unit',
+      showPush: this.props.showPush ?? false,
+      bandOffline: offline,
+      bandOnline: !offline,
+      moreOpen: this.state.moreOpen,
+      moreClosed: !this.state.moreOpen,
+      openMore: () => this.setState({ moreOpen: true }),
+      closeMore: () => this.setState({ moreOpen: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

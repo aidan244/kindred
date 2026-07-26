@@ -1,75 +1,79 @@
 /**
- * The detail beat's composer (design-plan.md §15.2) — inline, scrolls with
- * the conversation, never docked (the dock belongs to the emergency
- * control). Used identically for the per-question auto-detail beat and the
- * closing free-text beat; only the skip label and initial values differ.
+ * The detail beat's composer (design-plan.md §15.2; handoff README screen
+ * 05) — inline, scrolls with the conversation, NEVER docked: the dock
+ * belongs to the emergency control alone, on every screen of this flow.
  *
- * Nothing here evaluates or reacts to what she types — it only decides
- * whether Send is enabled (text or a voice note present) and hands the
- * result upward on Send/Skip.
+ * This is now a thin wrapper, not a composer. The composer itself is one
+ * shared component (src/components/Composer.tsx) used by screens 03 and 05
+ * so the two are the same object rather than two things that look alike —
+ * see HANDOFF_CONTRACT.md. Composer is fully controlled; this wrapper owns
+ * the draft (text + voice note) for the beat it belongs to, which is what
+ * lets the conversation mount a composer per category without a shared draft
+ * leaking from one beat into the next.
+ *
+ * Three shapes come out of the same component, decided entirely by which
+ * optional actions the caller supplies:
+ *  - screen 05's detail beat: `skipLabel` ("Skip this" / "Nothing to add") —
+ *    the beat is optional and must always have a way past it;
+ *  - screen 03's "Add more info": `leftActionLabel`
+ *    (CHECK_IN_BACK_TO_OPTIONS), which returns to the chip row;
+ *  - the closing beat re-opened from review: `initialText` /
+ *    `initialVoiceNote`, so "Change this" reopens what she already wrote
+ *    rather than a blank field.
+ *
+ * Nothing here evaluates or reacts to what she types.
  */
 
 import { useState, type ReactElement } from 'react';
-import { PaperPlaneRight } from '@phosphor-icons/react';
-import { VoiceNoteComposer } from '../../components/VoiceNoteComposer';
+import { Composer } from '../../components/Composer';
 import type { VoiceNote } from '../../types';
 
 export interface DetailBeatProps {
+  /** Unique per mounted composer — Composer builds its field ids from it. */
   id: string;
-  skipLabel: string;
+  /** Screen-reader label for the field: the bot line this beat answers. */
+  ariaLabel: string;
+  /** Present only where the beat is skippable (screen 05). */
+  skipLabel?: string;
+  onSkip?: () => void;
+  /** Present only on screen 03's "Add more info" composer. */
+  leftActionLabel?: string;
+  onLeftAction?: () => void;
   initialText?: string;
   initialVoiceNote?: VoiceNote | null;
   onSend: (text: string, voiceNote: VoiceNote | null) => void;
-  onSkip: () => void;
 }
 
 export function DetailBeat({
   id,
+  ariaLabel,
   skipLabel,
+  onSkip,
+  leftActionLabel,
+  onLeftAction,
   initialText = '',
   initialVoiceNote = null,
   onSend,
-  onSkip,
 }: DetailBeatProps): ReactElement {
   const [text, setText] = useState(initialText);
   const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(initialVoiceNote);
-  const textareaId = `${id}-detail-text`;
-
-  const canSend = text.trim().length > 0 || voiceNote !== null;
 
   return (
-    <div className="rounded-card border border-line bg-surface p-4">
-      <label htmlFor={textareaId} className="sr-only">
-        {skipLabel === 'Skip this' ? 'Anything you want to add about that' : 'Anything else your clinic should know'}
-      </label>
-      <textarea
-        id={textareaId}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        rows={3}
-        placeholder="Type here"
-        className="w-full resize-none bg-transparent text-body text-text placeholder:text-text-muted focus:outline-none"
-      />
-
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <div className={voiceNote ? 'w-full' : ''}>
-          <VoiceNoteComposer voiceNote={voiceNote} onChange={setVoiceNote} />
-        </div>
-        <div className="ml-auto flex items-center gap-4">
-          <button type="button" onClick={onSkip} className="tap px-2 text-label text-accent">
-            {skipLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => onSend(text.trim(), voiceNote)}
-            disabled={!canSend}
-            className="tap flex items-center gap-2 rounded-pill bg-accent px-6 text-label text-on-accent disabled:opacity-55"
-          >
-            <PaperPlaneRight size={20} weight="light" aria-hidden="true" />
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
+    <Composer
+      id={id}
+      value={text}
+      onChange={setText}
+      voiceNote={voiceNote}
+      onVoiceNoteChange={setVoiceNote}
+      leftActionLabel={leftActionLabel}
+      onLeftAction={onLeftAction}
+      skipLabel={skipLabel}
+      onSkip={onSkip}
+      // Trimmed here rather than in the composer: what reaches the report is
+      // this flow's decision, and "  " must record as nothing rather than as
+      // something she said.
+      onSend={(sentText, sentVoiceNote) => onSend(sentText.trim(), sentVoiceNote)}
+      ariaLabel={ariaLabel}
+    />
   );
 }

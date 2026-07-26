@@ -120,14 +120,16 @@ function flatten(sections: ReportSections): string {
 describe('buildReportSections', () => {
   it('never contains "A&E" or "detected", fully populated', () => {
     const text = flatten(buildReportSections(fullReport));
-    expect(text).not.toContain('A&E');
-    expect(text).not.toContain('detected');
+    // Case-INSENSITIVE: 'Detected' at the start of a sentence and 'DETECTED'
+    // both passed the old exact-match assertions.
+    expect(text).not.toMatch(/a&e/i);
+    expect(text).not.toMatch(/detected/i);
   });
 
   it('never contains "A&E" or "detected" on a minimal/empty report', () => {
     const text = flatten(buildReportSections(minimalReport));
-    expect(text).not.toContain('A&E');
-    expect(text).not.toContain('detected');
+    expect(text).not.toMatch(/a&e/i);
+    expect(text).not.toMatch(/detected/i);
   });
 
   it('does not crash on missing/empty detail fields, and does not fabricate content', () => {
@@ -221,8 +223,8 @@ describe('buildReportSections', () => {
     expect(text).toContain(REPORT_VOICE_NOTE_NOTE);
     // Never contains the forbidden words even with a voice note attached.
     const fullText = JSON.stringify(sections);
-    expect(fullText).not.toContain('A&E');
-    expect(fullText).not.toContain('detected');
+    expect(fullText).not.toMatch(/a&e/i);
+    expect(fullText).not.toMatch(/detected/i);
   });
 
   it('appends REPORT_VOICE_NOTE_NOTE after the description when a closing voice note is attached', () => {
@@ -254,14 +256,33 @@ describe('buildReportSections', () => {
     }
   });
 
-  it('handles an empty activity array without crashing, all-zero rows', () => {
+  it('states absence, never a zeroed table, when no activity was recorded', () => {
+    // An empty window must not print as a confirmed 24 hours of no movement.
+    // This test previously asserted the opposite (24 rows of "moved in 0 of 0
+    // samples" under a "0 movements recorded" total) — a positive clinical
+    // claim manufactured out of no data, on the document the clinic reads.
     const sections = buildReportSections(minimalReport);
-    expect(sections.activity.paragraphs[0]).toContain('0 movements recorded');
+    expect(() => buildReportSections(minimalReport)).not.toThrow();
+    expect(sections.activity.paragraphs).toHaveLength(1);
+    expect(sections.activity.paragraphs[0]).toMatch(/no movement data was recorded/i);
+    const all = sections.activity.paragraphs.join('\n');
+    expect(all).not.toContain('0 of 0');
+    expect(all).not.toContain('movements recorded across');
+    expect(all).not.toContain('Hourly breakdown');
+  });
+
+  it('omits an hour the band did not report, rather than listing it as zero movement', () => {
+    // 12 samples in one hour only. The other 23 hours have no data — and an
+    // hour with no data is not an hour of stillness.
+    const oneHourOnly: ActivitySample[] = Array.from({ length: 12 }, (_, i) => ({
+      timestamp: new Date(submittedAt.getTime() - i * 5 * 60 * 1000),
+      moved: i % 2 === 0,
+    }));
+    const sections = buildReportSections({ ...fullReport, recentActivity: oneHourOnly });
     const hourlyLines = sections.activity.paragraphs.slice(3);
-    expect(hourlyLines).toHaveLength(24);
-    for (const line of hourlyLines) {
-      expect(line).toContain('moved in 0 of 0 samples');
-    }
+    expect(hourlyLines).toHaveLength(1);
+    expect(hourlyLines[0]).toContain('moved in 6 of 12 samples');
+    expect(sections.activity.paragraphs.join('\n')).not.toContain('0 of 0');
   });
 
   it('includes the wearable-data disclaimer', () => {
@@ -276,7 +297,7 @@ describe('buildReportSections', () => {
 
   it('does not use the word "detected" for an alert-path entry', () => {
     const sections = buildReportSections(fullReport);
-    expect(sections.entry.paragraphs.join(' ')).not.toContain('detected');
+    expect(sections.entry.paragraphs.join(' ')).not.toMatch(/detected/i);
     expect(sections.entry.paragraphs.join(' ').toLowerCase()).toContain('alert');
   });
 

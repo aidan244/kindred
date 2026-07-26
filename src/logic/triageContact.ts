@@ -20,8 +20,15 @@
  * Pure and deterministic: `now` is a parameter, not read from the system
  * clock, so this is fully testable without waiting for a particular time of
  * day.
+ *
+ * WHAT THIS MODULE DOES NOT AUTHOR: the sentence she reads. `reason` is
+ * rendered as the outcome screen's `lead` paragraph — the largest body copy on
+ * that screen — so its words come from `triageContactReason()` in
+ * src/data/clinicalContent.ts, where a copy reviewer would look for them. This
+ * module decides WHICH contact; that one decides how it is said.
  */
 
+import { triageContactReason } from '../data/clinicalContent';
 import type { Patient, TriageContact, ClinicHours } from '../types';
 
 function minutesFromHHMM(value: string): number {
@@ -79,7 +86,7 @@ export function getTriageContact(now: Date, patient: Patient): TriageContact {
     return {
       label: clinic.name,
       number: clinic.triagePhoneNumber,
-      reason: 'Your clinic is open now, call this number.',
+      reason: triageContactReason('clinic', clinic.hours.opens),
       kind: 'clinic',
     };
   }
@@ -87,7 +94,7 @@ export function getTriageContact(now: Date, patient: Patient): TriageContact {
   return {
     label: bookedUnit.name,
     number: bookedUnit.triagePhoneNumber,
-    reason: `Your clinic is closed until ${clinic.hours.opens}, call the maternity unit instead.`,
+    reason: triageContactReason('unit', clinic.hours.opens),
     kind: 'unit',
   };
 }

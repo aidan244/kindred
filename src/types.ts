@@ -152,6 +152,36 @@ export interface ActivitySample {
   moved: boolean;
 }
 
+/**
+ * One fetal heart-rate reading from the band (handoff README, screens 01 and
+ * 08 — "HeartRateTrace"). The band reports movement and heart rate over the
+ * same link, so both live behind the one sensor boundary
+ * (src/sensors/MovementStream.ts).
+ *
+ * `bpm` is whole beats per minute as the band reports it. There is no
+ * "quality" or "confidence" field and no interpretation of any kind: the app
+ * draws the shape of this and stops. A window with no samples renders
+ * nothing at all — absence is absence (handoff README, invariants).
+ */
+export interface HeartRateSample {
+  timestamp: Date;
+  bpm: number;
+}
+
+/**
+ * A window of heart-rate samples, plus where the band's own settling ends.
+ *
+ * `settledIndex` is the last sample the band has confirmed; anything after
+ * it is still arriving and is drawn as the greyed incoming edge on the live
+ * view (handoff README, screen 08 — the gradient's hard switch at 62%, with
+ * the live-sample dot at the switch point). On a settled window
+ * (`getHeartRateWindow`) it is simply the last index.
+ */
+export interface HeartRateWindow {
+  samples: HeartRateSample[];
+  settledIndex: number;
+}
+
 // ---------------------------------------------------------------------------
 // Triage outcome
 // ---------------------------------------------------------------------------

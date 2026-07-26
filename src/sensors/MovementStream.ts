@@ -11,18 +11,45 @@
  * whichever activity variant the demo panel currently has selected.
  */
 
-import type { ActivitySample, ActivityVariant } from '../types';
+import type { ActivitySample, ActivityVariant, HeartRateWindow } from '../types';
 import { generateSeedActivity } from '../data/seedActivity';
+import { generateHeartRateWindow } from '../data/seedHeartRate';
 
 export interface MovementStream {
   /** Subscribes to a live sample stream. Returns an unsubscribe function. */
   subscribe(cb: (sample: ActivitySample) => void): () => void;
-  /** Returns all samples within the last `hours`, oldest first. */
+  /** Returns all samples within the last `hours`, oldest first. A band with
+   * no signal returns an EMPTY array, for the same reason the heart-rate
+   * windows do: this boundary reports what the band reported, and reports
+   * nothing when it reported nothing. */
   getWindow(hours: number): ActivitySample[];
-  /** Her personal typical (baseline) movement level, as a 0-1 fraction. */
+  /** Her personal typical (baseline) movement level, as a 0-1 fraction.
+   * Deliberately NOT gated on the band's signal — see the implementation. */
   getBaseline(): number;
+
+  // -- Heart rate --------------------------------------------------------
+  // Added for the handoff README's HeartRateTrace (screens 01 and 08). The
+  // band reports movement and heart rate over the same link, so this is the
+  // same boundary, not a second one: swapping in real hardware means one new
+  // implementation of THIS interface, still with no other file changing.
+  // (design-plan.md §16.1's "do not add injection here" still holds — none
+  // of the methods below are injectable, and the demo panel drives them only
+  // by toggling `bandOffline` in app state.)
+
+  /** The settled 24h-scale trace behind Home's live-data card, oldest
+   * first. A band with no signal returns an empty window, and the card
+   * renders the no-signal block rather than a flat line — absence is
+   * absence (handoff README, invariants). */
+  getHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
+
+  /** The live-view window. Its trailing samples are still being confirmed
+   * by the band, which is what `HeartRateWindow.settledIndex` marks and
+   * what screen 08 draws as the greyed incoming edge. */
+  getLiveHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
+
+  /** Whether the band is currently reporting at all. */
+  hasSignal(): boolean;
 }
-// ^ UNCHANGED (design-plan.md §16.1). Do not add injection here.
 
 /**
  * Demo-only capability, implemented by the mock stream so the demo panel can
@@ -54,6 +81,27 @@ export function asInjectable(stream: MovementStream): InjectableMovementStream |
 
 const LIVE_EMIT_INTERVAL_MS = 4000;
 const BASELINE_LOOKBACK_HOURS = 24;
+
+/**
+ * Fraction of the live window the band has finished confirming. Everything
+ * after it is the incoming edge screen 08 draws greyed, with the live-sample
+ * dot sitting exactly on the boundary — the handoff README's "hard-switches
+ * at 62%". It is a property of how the band reports, which is why it lives
+ * behind the sensor boundary rather than being a number a screen invents.
+ */
+const SETTLED_FRACTION = 0.62;
+
+/** Whether the band is reporting. A real implementation would derive this
+ * from the link itself; the mock exposes a setter so the demo panel can put
+ * the no-signal state on screen on cue (handoff README, screen 01's offline
+ * variant). Module-level rather than per-variant: there is one band. */
+let bandHasSignal = true;
+
+/** Demo-only. Mirrors `bandOffline` in app state — see
+ * src/context/AppStateContext.tsx, which is the one caller. */
+export function setBandSignal(value: boolean): void {
+  bandHasSignal = value;
+}
 
 // injectBurst() defaults — design-plan.md §16.4, "the active spell". Do not
 // "improve" these: raising count past ~9 saturates the live view's 6-ring
@@ -87,7 +135,24 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
 
   constructor(private variant: ActivityVariant) {}
 
+  /**
+   * ONE QUESTION, ONE ANSWER. This is gated on `bandHasSignal` exactly as
+   * `heartRate()` is, and for the same reason stated there: an offline band
+   * returns nothing at all, because absence is absence.
+   *
+   * It used to ignore the flag entirely, which meant the boundary answered
+   * "what did the band report in the last 24 hours" two different ways at the
+   * same moment: Home and the live view drew the no-signal block from the
+   * heart-rate windows, while `reportAssembly` pulled ~288 movement samples
+   * out of THIS method for the very same window and put them in the report she
+   * downloads — and which rule 4e has already sent to her clinic. The seed
+   * generator (src/data/seedActivity.ts) has no signal check of its own and
+   * always produces 14 days, so nothing downstream was ever going to catch it.
+   */
   getWindow(hours: number): ActivitySample[] {
+    if (!bandHasSignal) {
+      return [];
+    }
     const now = new Date();
     const cutoffMs = now.getTime() - hours * 60 * 60 * 1000;
     return generateSeedActivity(this.variant, now).filter(
@@ -95,6 +160,19 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
     );
   }
 
+  /**
+   * NOT gated on `bandHasSignal`, and that is a decision rather than an
+   * oversight — the sibling method above states the opposite case, so this one
+   * has to say why it differs.
+   *
+   * The baseline is a HISTORICAL figure: what was normal for her across the 14
+   * days BEFORE the last 24 hours (see the cutoff below). The band being quiet
+   * right now says nothing about what it recorded a week ago, so suppressing
+   * the baseline would discard a fact that is still true. The rule this
+   * boundary follows is "never report what the band did not report", not
+   * "report nothing while the band is quiet" — and a live window and a
+   * fortnight of history are not the same claim.
+   */
   getBaseline(): number {
     // Her personal typical movement level, taken from the normal ('active')
     // pattern outside of the most recent day, so a quiet spell can be
@@ -111,6 +189,42 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
     return movedCount / priorSamples.length;
   }
 
+  hasSignal(): boolean {
+    return bandHasSignal;
+  }
+
+  /** Shared by both heart-rate windows. An offline band returns nothing at
+   * all rather than a flat line at the baseline — a flat line is a claim,
+   * and this boundary never makes one. */
+  private heartRate(spanMinutes: number, stepSeconds: number, settledFraction: number): HeartRateWindow {
+    if (!bandHasSignal) {
+      return { samples: [], settledIndex: -1 };
+    }
+    const samples = generateHeartRateWindow(
+      this.variant,
+      Date.now(),
+      spanMinutes * 60 * 1000,
+      stepSeconds * 1000
+    );
+    if (samples.length === 0) {
+      return { samples, settledIndex: -1 };
+    }
+    return {
+      samples,
+      settledIndex: Math.max(0, Math.round(settledFraction * (samples.length - 1))),
+    };
+  }
+
+  getHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow {
+    // Everything Home shows has already settled — its trace is a record of
+    // the day, not a live edge.
+    return this.heartRate(spanMinutes, stepSeconds, 1);
+  }
+
+  getLiveHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow {
+    return this.heartRate(spanMinutes, stepSeconds, SETTLED_FRACTION);
+  }
+
   /** Fans out one sample to every current subscriber. The single place any
    * sample — real or injected — reaches the outside world. */
   private emit(sample: ActivitySample): void {
@@ -120,7 +234,14 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
   private emitLatest = (): void => {
     const window = this.getWindow(1);
     const latest = window[window.length - 1];
-    this.emit(latest ?? { timestamp: new Date(), moved: false });
+    // Nothing to say when the band said nothing. This used to fall back to a
+    // synthetic `{ moved: false }` sample, which is a positive statement that
+    // she did not move — manufactured out of an empty window. Silence is the
+    // honest emission, and it is now reachable: `getWindow` returns empty
+    // whenever the band has no signal.
+    if (latest) {
+      this.emit(latest);
+    }
   };
 
   subscribe(cb: (sample: ActivitySample) => void): () => void {

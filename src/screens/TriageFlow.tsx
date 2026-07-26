@@ -1,23 +1,33 @@
 /**
  * The triage flow (/triage) — shared by both entry paths ("alert": she
- * tapped a push notification, and "adhoc": she pressed Check in herself).
- * Two phases, one route, internal phase state:
+ * tapped a push notification, and "adhoc": she pressed Speak to Kindred
+ * herself). Two phases, one route, internal phase state:
  *
- *  a. The conversational check-in (design-plan.md §14, amended for the
- *     six-category schema — held-build-brief.md placeholder_content) — one
- *     continuous, scrolling exchange covering the red-flag categories and
- *     the closing free-text beat. src/screens/triage/CheckInConversation.tsx.
- *  b. Review — everything that will be sent, in plain language, with the
- *     ability to jump back and edit any category before sending. SKIPPED
- *     entirely when a hard stop has already routed her to the emergency
- *     outcome (see `handleHardStop` below) — placeholder_content's
- *     hard-stop rule.
+ *  a. The conversational check-in (handoff README screens 03/04/05;
+ *     design-plan.md §14, amended for the six-category schema —
+ *     held-build-brief.md placeholder_content) — one continuous, scrolling
+ *     exchange covering the red-flag categories and the closing free-text
+ *     beat. src/screens/triage/CheckInConversation.tsx.
+ *  b. Review (handoff README screen 06) — everything that will be sent, in
+ *     plain language, with the ability to jump back and edit any category
+ *     before sending. SKIPPED entirely when a hard stop has already routed
+ *     her to the emergency outcome (see `handleHardStop` below) —
+ *     placeholder_content's hard-stop rule.
  *
- * This screen does not get the global CheckInControl bar (see
- * src/components/Layout.tsx) — instead the emergency call control is
- * docked in the same position on every screen of this flow, because in
- * this flow "raise a concern" already means "call now", not "start a
- * check-in" (safety rule 3).
+ * DOCK OWNERSHIP. Every screen renders into ONE shared fixed rectangle
+ * (src/components/Dock.tsx), so the two call controls appear not to move
+ * between screens. This screen owns that rectangle only while it is showing
+ * the CONVERSATION: `ReviewStep` renders its own `<Dock variant="tall">`
+ * (send + note + operator) for the review phase, and two docks portalled
+ * into the same host at once would stack. Hence `phase === 'conversation'`
+ * on the Dock below — not a styling nicety, it is the handover point
+ * between the two owners.
+ *
+ * The conversation's dock is the EMERGENCY control, not Speak to Kindred:
+ * inside this flow "raise a concern" already means "call now", not "start a
+ * check-in" (safety rule 3). It is never disabled, never animated, never
+ * shadowed, and `OperatorCall` is the last child of it, as of every dock in
+ * the product.
  *
  * Arriving here with `location.state?.continueAfterHardStop` means she used
  * the quiet "Add more detail for your clinic" link on the emergency outcome
@@ -25,24 +35,29 @@
  * be cleared in that case, unlike a genuinely fresh check-in.
  */
 
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CaretLeft } from '@phosphor-icons/react';
 import { revokeVoiceNoteUrl, useAppState } from '../context/AppStateContext';
-import { BLEEDING_CATEGORY_ID, BLEEDING_EMERGENCY_NOTE, patientFixture, redFlagCategories } from '../data/clinicalContent';
+import {
+  BACK_LABEL,
+  BLEEDING_CATEGORY_ID,
+  BLEEDING_EMERGENCY_NOTE,
+  CHECK_IN_PROGRESS_LABEL,
+  CHECK_IN_SCREEN_TITLE,
+  checkInProgressValueText,
+  patientFixture,
+  redFlagCategories,
+} from '../data/clinicalContent';
 import { getTriageContact } from '../logic/triageContact';
+import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
+import { OperatorCall } from '../components/OperatorCall';
 import { CheckInConversation, type BackRequest } from './triage/CheckInConversation';
 import { ReviewStep } from './triage/ReviewStep';
 import type { CategoryAnswer } from '../types';
 
 const CATEGORY_COUNT = redFlagCategories.length;
-
-/** Dock height is generous on purpose: it only has to comfortably clear the
- * two-control emergency stack (primary + 999) plus its fade, across every
- * step's content. Getting this exactly pixel-perfect matters less than
- * never letting content sit invisibly behind the dock. */
-const CONTENT_BOTTOM_PADDING = 'calc(268px + env(safe-area-inset-bottom, 0px))';
 
 type Phase = 'conversation' | 'review';
 type EditTarget =
@@ -64,10 +79,10 @@ export default function TriageFlow(): ReactElement {
     setTriageVoiceNote,
     reportSubmission,
     submitReport,
+    setTriagePhase,
   } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
-  const dockRef = useRef<HTMLDivElement | null>(null);
 
   // "Add more detail for your clinic" (the quiet link on the emergency
   // outcome screen) arrives with this flag so her existing answers are
@@ -112,6 +127,14 @@ export default function TriageFlow(): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // App state holds the phase too, because things mounted ABOVE the router
+  // (the shared dock host) may need to know which half of this flow is on
+  // screen without reaching into it. This screen stays the owner — the
+  // context copy follows it, never the other way round.
+  useEffect(() => {
+    setTriagePhase(phase);
+  }, [phase, setTriagePhase]);
+
   // Arriving at review is a normal route-level transition (§14.8) — it
   // should feel like arriving somewhere else, starting at the top. Leaving
   // review (back caret, or an "Edit" press) intentionally does NOT reset
@@ -130,6 +153,10 @@ export default function TriageFlow(): ReactElement {
   );
   const secondaryNote = bleedingFlagged ? BLEEDING_EMERGENCY_NOTE : undefined;
 
+  // The rail counts CATEGORIES, not questions, and a category currently
+  // being re-asked is not counted — which is why changing an answer can send
+  // the rail backwards. That is correct and deliberately not special-cased
+  // (handoff README 03: "may go down if she changes an answer").
   const answeredCount = redFlagCategories.filter(
     (c) => c.id !== reaskCategoryId && categoryAnswers.some((a) => a.categoryId === c.id)
   ).length;
@@ -260,26 +287,37 @@ export default function TriageFlow(): ReactElement {
   };
 
   return (
-    <div className="relative min-h-screen bg-bg text-text">
-      <div className="mx-auto flex min-h-screen w-full max-w-[420px] flex-col px-6">
-        <header className="flex items-center gap-4 pt-8">
+    <>
+      {/* README 03: `padding: 32px 24px 0`, content max-width 420, centred.
+          The top inset is added to the 32px rather than replacing it, so the
+          header keeps its designed distance from the notch. `dock-safe-tall`
+          is the 268px this flow's three-control dock clears — no message,
+          chip or composer may enter it. */}
+      <div className="mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe-tall">
+        <header className="flex items-center gap-4">
           <button
             type="button"
             onClick={goBack}
-            aria-label="Back"
-            className="tap -ml-4 flex shrink-0 items-center justify-center text-text-muted"
+            aria-label={BACK_LABEL}
+            className="tap press -ml-4 flex shrink-0 items-center justify-center text-text-muted"
           >
             <CaretLeft size={24} weight="light" aria-hidden="true" />
           </button>
 
+          {/* 3px, pill, accent on line. No numeral, no gradient, no glow, no
+              colour change at 100% — and it is gone entirely once the last
+              category is answered, because a full bar is not information.
+              The numeral it withholds visually is given to screen readers
+              through aria-valuetext. */}
           {showRail && (
             <div
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={CATEGORY_COUNT}
               aria-valuenow={answeredCount}
-              aria-label="Check-in progress"
-              className="h-[3px] flex-1 rounded-pill bg-line"
+              aria-valuetext={checkInProgressValueText(answeredCount, CATEGORY_COUNT)}
+              aria-label={CHECK_IN_PROGRESS_LABEL}
+              className="h-[3px] flex-1 overflow-hidden rounded-pill bg-line"
             >
               <div
                 className="h-full rounded-pill bg-accent"
@@ -292,9 +330,10 @@ export default function TriageFlow(): ReactElement {
           )}
         </header>
 
-        <h1 className="sr-only">Check in</h1>
+        <h1 className="sr-only">{CHECK_IN_SCREEN_TITLE}</h1>
 
-        <div className="flex-1 pt-8" style={{ paddingBottom: CONTENT_BOTTOM_PADDING }}>
+        {/* The conversation starts 24px below the header (README 03). */}
+        <div className="pt-6">
           {/* CheckInConversation stays mounted for the whole flow, even
               while review is showing (toggled with `hidden` rather than
               unmounted) — its beats must never re-animate on a round trip
@@ -306,7 +345,6 @@ export default function TriageFlow(): ReactElement {
             aria-relevant="additions"
           >
             <CheckInConversation
-              dockRef={dockRef}
               reaskCategoryId={reaskCategoryId}
               onChangeThisGate={handleChangeThisGate}
               onGateReaskResolved={handleGateReaskResolved}
@@ -339,24 +377,14 @@ export default function TriageFlow(): ReactElement {
         </div>
       </div>
 
-      <div
-        ref={dockRef}
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-6"
-      >
-        <div className="pointer-events-auto w-full max-w-[372px]">
-          <div
-            aria-hidden="true"
-            className="h-6"
-            style={{ background: 'linear-gradient(to top, transparent, var(--bg))' }}
-          />
-          <div
-            className="bg-bg pt-2"
-            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}
-          >
-            <EmergencyCall contact={contact} secondaryNote={secondaryNote} />
-          </div>
-        </div>
-      </div>
-    </div>
+      {/* Conversation phase only — ReviewStep owns the same rectangle for
+          the review phase (see this file's header). */}
+      {phase === 'conversation' && (
+        <Dock variant="tall">
+          <EmergencyCall contact={contact} prominence="standard" secondaryNote={secondaryNote} />
+          <OperatorCall />
+        </Dock>
+      )}
+    </>
   );
 }

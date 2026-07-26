@@ -96,7 +96,7 @@ describe('hard-stop interrupt (UI behaviour)', () => {
     // Navigated straight to the emergency outcome — "Call now" is
     // Outcome's escalate-state heading, and 999 is the primary number for
     // the emergency tier (src/screens/Outcome.tsx EMERGENCY_TIER_CONTACT).
-    expect(screen.getByText('Call now')).toBeInTheDocument();
+    expect(screen.getByText('Please call 999 now.')).toBeInTheDocument();
     expect(screen.getByText('999')).toBeInTheDocument();
 
     // Review was skipped entirely — its heading never appears.
@@ -133,7 +133,7 @@ describe('hard-stop interrupt (UI behaviour)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
     advance(500);
 
-    expect(screen.getByText('Call now')).toBeInTheDocument();
+    expect(screen.getByText('Please call 999 now.')).toBeInTheDocument();
     expect(screen.getByText('999')).toBeInTheDocument();
     expect(screen.queryByText('Check everything')).not.toBeInTheDocument();
   });
