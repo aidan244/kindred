@@ -6,45 +6,50 @@
  * 12px gap, the two body lines, then 24px below two full-width 56px pills
  * stacked 12px apart.
  *
- * An alert must not look like an emergency, because most sensor alerts here
- * are false positives: no red, no orange-as-warning, no warning triangle, no
- * exclamation mark, no badge, no dot, no pulse. The only decoration permitted
- * is the hand-drawn band mark or a Phosphor Bell Light in `text-accent` —
- * this uses Bell.
+ * DELIBERATE DEPARTURE, ON INSTRUCTION, NOT AN OVERSIGHT. This block used to
+ * offer "Speak to Kindred" plus a plain "Dismiss" — no red, no urgency,
+ * because most sensor alerts here are false positives and nothing had been
+ * assessed yet. The second control is now EmergencyCall itself: a direct 999
+ * line from an unconfirmed alert, before any check-in question has been
+ * asked. That is rule 5 ("movement data never determines disposition") in
+ * its most direct form, raised and knowingly accepted rather than built
+ * quietly — see this feature's own conversation for the tradeoff as stated.
+ * It does not trip invariant 1's file-scoped emergency-token sweep, because
+ * this renders the existing EmergencyCall component rather than duplicating
+ * its styling — there is still exactly one implementation of "dial 999" in
+ * the product, just a second place it's mounted.
  *
- * Safety rule: copy leads with the suggested action and her own perception,
- * never a diagnostic assertion. The word "detected" never appears. It never
- * shows sensor data as evidence for or against her concern.
+ * ALSO GONE: the neutral "I'm fine, dismiss this" exit. Tapping the alert
+ * card now only ever leads to a check-in or a call — there is no longer a
+ * third option that ends the alert without either. Flagged the same way as
+ * everything above: a real, visible consequence of this change, not
+ * something to quietly re-add.
  *
- * Two actions, both plain pill controls (never red). The first carries the
- * KindredMark, because it IS the "Speak to Kindred" control — it starts the
- * same check-in as the docked one and shares its label, so it must not read
- * as a different, lesser affordance that happens to use the same words. The
- * second dismisses: one tap, never a confirmation dialog, and it clears the
- * 'alert' entryPath too so a later ad hoc check-in isn't mislabelled.
+ * Safety rule (everything else, unchanged): copy leads with the suggested
+ * action and her own perception, never a diagnostic assertion. The word
+ * "detected" never appears. It never shows sensor data as evidence for or
+ * against her concern.
  */
 
 import type { ReactElement } from 'react';
 import { Bell } from '@phosphor-icons/react';
+import { EmergencyCall } from './EmergencyCall';
 import { KindredMark } from './KindredMark';
-import {
-  ALERT_FRAMING_BODY,
-  ALERT_FRAMING_DISMISS_LABEL,
-  ALERT_FRAMING_TITLE,
-  CHECK_IN_CONTROL_LABEL,
-} from '../data/clinicalContent';
+import { ALERT_FRAMING_BODY, ALERT_FRAMING_TITLE, CHECK_IN_CONTROL_LABEL } from '../data/clinicalContent';
 
 export interface AlertFramingBlockProps {
   onCheckIn: () => void;
-  onDismiss: () => void;
 }
 
-// Both pills: the README's 56px, expressed as a minimum rather than a height
-// so they grow instead of clipping when text is scaled to 200%.
+// The one remaining pill here: the README's 56px, expressed as a minimum
+// rather than a height so it grows instead of clipping when text is scaled
+// to 200%. EmergencyCall draws its own matching pill at `standard`
+// prominence, so the two controls stay the same size without sharing a
+// class string.
 const PILL_CLASSES =
   'tap press flex min-h-14 w-full items-center justify-center gap-3 rounded-pill px-6 py-2 text-label';
 
-export function AlertFramingBlock({ onCheckIn, onDismiss }: AlertFramingBlockProps): ReactElement {
+export function AlertFramingBlock({ onCheckIn }: AlertFramingBlockProps): ReactElement {
   return (
     <section aria-label="Notification" className="rounded-card bg-surface-hi p-[22px]">
       <div className="flex items-start gap-3">
@@ -66,13 +71,7 @@ export function AlertFramingBlock({ onCheckIn, onDismiss }: AlertFramingBlockPro
           <KindredMark size={24} className="shrink-0" />
           {CHECK_IN_CONTROL_LABEL}
         </button>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className={`${PILL_CLASSES} border border-line bg-surface text-text`}
-        >
-          {ALERT_FRAMING_DISMISS_LABEL}
-        </button>
+        <EmergencyCall prominence="standard" />
       </div>
     </section>
   );

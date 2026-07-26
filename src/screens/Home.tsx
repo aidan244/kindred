@@ -78,7 +78,7 @@ const SYNC_REFRESH_MS = 30000;
  * to `bandOfflineCopy`, where the three lines are reviewed as one voice. */
 
 export default function Home(): ReactElement {
-  const { alertActive, setAlertActive, entryPath, setEntryPath, activityVariant } = useAppState();
+  const { alertActive, entryPath, setEntryPath, activityVariant } = useAppState();
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
 
@@ -107,16 +107,6 @@ export default function Home(): ReactElement {
     navigate('/triage');
   };
 
-  // One tap, never a confirmation dialog. Clears the 'alert' entry path
-  // too, so a later ad hoc check-in isn't mislabelled as having come from
-  // this notification.
-  const handleDismiss = (): void => {
-    setAlertActive(false);
-    if (entryPath === 'alert') {
-      setEntryPath(null);
-    }
-  };
-
   const handleOpenLiveView = (): void => {
     navigate('/live');
   };
@@ -140,7 +130,7 @@ export default function Home(): ReactElement {
         <h1 className="text-display text-text">{homeGreeting(FIRST_NAME)}</h1>
 
         {alertActive ? (
-          <AlertFramingBlock onCheckIn={handleAlertCheckIn} onDismiss={handleDismiss} />
+          <AlertFramingBlock onCheckIn={handleAlertCheckIn} />
         ) : (
           /* Decorative presence, not a status light: it carries no face, no
              expression and no colour change, and KindredAvatar marks it
