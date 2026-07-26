@@ -224,6 +224,9 @@ export class MockBackend implements HeldBackend {
       onboardingHistory: EMPTY_ONBOARDING_ANSWERS,
       recentActivity: stream.getWindow(24),
       activityBaseline: stream.getBaseline(),
+      // Same seeded stream as the movement window above, so the mock's report
+      // and the mock's screens agree about this patient's kicks.
+      dailyKicks: stream.getDailyKickWindow(),
       disclaimer: REPORT_DISCLAIMER,
     };
     await this.audit('report_data_built', { sessionId });

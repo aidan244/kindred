@@ -51,15 +51,28 @@ export type HistoryFlag =
   | 'diabetes'
   | 'none-of-these';
 
+/**
+ * `detailVoiceNote` is the spoken alternative to the matching `detail` field:
+ * both optional-detail boxes in onboarding carry a mic, for the same reason
+ * the check-in's composers do — a woman who would rather say it than type it
+ * must not have to type it. OPTIONAL, and never a replacement for `detail`:
+ * she may record instead of typing, as well as typing, or neither.
+ *
+ * Additive on purpose. `onboarding_history` is persisted as a single JSON
+ * column (src/lib/backend/supabaseBackend.ts), so this needs no migration
+ * and an older stored row simply has no note — which is the truth about it.
+ */
 export interface OnboardingAnswers {
   weeksPregnant: number | null;
   extraMonitoring: {
     answer: YesNoUnsure | null;
     detail: string;
+    detailVoiceNote?: VoiceNote | null;
   };
   history: {
     selected: HistoryFlag[];
     detail: string;
+    detailVoiceNote?: VoiceNote | null;
   };
 }
 
@@ -92,6 +105,21 @@ export type FollowUpAnswerValue =
 export interface FollowUpAnswer {
   followUpId: string;
   value: FollowUpAnswerValue;
+  /**
+   * A voice note recorded into a `text` follow-up's composer, if any.
+   *
+   * An ATTACHMENT ON THE RECORD, not a member of `FollowUpAnswerValue` —
+   * exactly the shape `CategoryAnswer` already uses for its own
+   * `detail`/`voiceNote` pair. Audio is not a formattable value, so putting
+   * it inside the tagged union would mean every consumer of
+   * `formatFollowUpAnswerValue` had to know to ignore one field of one
+   * variant.
+   *
+   * Only ever set on a `text` follow-up: a mic is offered wherever she can
+   * type free text and nowhere else (there is no spoken answer to a number
+   * or a chip row).
+   */
+  voiceNote?: VoiceNote;
 }
 
 /**
@@ -231,5 +259,26 @@ export interface ReportData {
   recentActivity: ActivitySample[];
   /** Her personal typical movement level, for comparison. */
   activityBaseline: number;
+  /**
+   * The band's kick tallies, one per day, oldest first — the same window
+   * Home's trace draws (`getDailyKickWindow`), so the clinician's line graph
+   * and the chart she saw are the same data rather than two derivations of
+   * it.
+   *
+   * DAILY, NOT HOURLY, and that is a choice about what the document is for.
+   * `recentActivity` already covers the preceding 24 hours hour by hour; a
+   * second 24-hour view would restate it at a different resolution, whereas a
+   * week of daily tallies is the time-scale that view cannot show. The window
+   * is a fixed measurement from the sensor boundary, not a span this report
+   * requests — see MovementStream's kick section for why a day and an hour
+   * are two different measurements rather than two samplings of one.
+   *
+   * An EMPTY window is a legitimate, expected value: a band with no signal
+   * reports nothing, and `SupabaseMovementStream` has no kick table yet.
+   * `settledIndex` is the last COMPLETE interval — the final sample is today,
+   * still counting, and is always lower for that reason alone. Nothing in the
+   * report may print it as a headline figure.
+   */
+  dailyKicks: KickWindow;
   disclaimer: string;
 }

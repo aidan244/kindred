@@ -62,6 +62,21 @@ export interface ComposerProps {
   onSend: (text: string, voiceNote: VoiceNote | null) => void;
   /** Screen-reader label for the textarea. */
   ariaLabel: string;
+  /**
+   * Lets Send commit an empty composer.
+   *
+   * Default false: on the detail beats (03/05) there is a Skip or a Back, so
+   * an empty Send would be a second, wordless way past a beat that already
+   * has a labelled one. A `text` FOLLOW-UP has neither — it is a question
+   * inside the questionnaire, and a blank answer to it is legitimate rather
+   * than an error (src/data/clinicalContent.ts, modelling decision (d)), so
+   * that caller must be able to send nothing. Disabling Send there would
+   * strand her on a question she has no answer to.
+   *
+   * This still reads nothing she typed: `canSend` remains the one derived
+   * fact, and this only changes what it is derived from.
+   */
+  allowEmptySend?: boolean;
 }
 
 export function Composer({
@@ -76,12 +91,13 @@ export function Composer({
   onSkip,
   onSend,
   ariaLabel,
+  allowEmptySend = false,
 }: ComposerProps): ReactElement {
   const recording = useVoiceNoteRecording(voiceNote, onVoiceNoteChange);
   const textareaId = `${id}-text`;
 
   // Either kind of content counts: a voice note alone is a complete answer.
-  const canSend = value.trim().length > 0 || voiceNote !== null;
+  const canSend = allowEmptySend || value.trim().length > 0 || voiceNote !== null;
 
   const handleSend = (): void => {
     if (!canSend) {
