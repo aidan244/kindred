@@ -179,10 +179,9 @@ describe('invariant 9 — patient-facing copy obeys the voice rules', () => {
     content.emergencyHandoverLead(34, answers),
     content.emergencyHandoverLead(34, []),
     content.outcomeReportSentNote('Thornfield Clinic'),
-    content.outcomeRoutineSentLead('Thornfield Clinic', '14:32'),
-    content.outcomeRoutineClinicHours('Thornfield Clinic', true, '08:00'),
-    content.outcomeRoutineClinicHours('Thornfield Clinic', false, '08:00'),
-    content.outcomeRoutineWaitNote('Thornfield Clinic'),
+    // The routine state's three sentence-builders went when it was cut back to
+    // "nothing was flagged" plus the call route; its copy is now three plain
+    // constants, which this file's exported-constant sweep already covers.
     content.outcomeCallContactLabel('Thornfield Clinic'),
     content.triageContactReason('clinic', '08:00'),
     content.triageContactReason('unit', '08:00'),
@@ -200,10 +199,32 @@ describe('invariant 9 — patient-facing copy obeys the voice rules', () => {
     expect(everyString.length).toBeGreaterThan(100);
   });
 
-  it('never uses the word "detected", in any casing', () => {
+  /**
+   * The alert stage is a NAMED, DELIBERATE exemption from the "detected" rule,
+   * not a leak — see the note on ALERT_FRAMING_TITLE in clinicalContent.ts.
+   *
+   * It is written as an explicit allowlist of the exact strings rather than by
+   * deleting the assertion, so that: the rule still fails for every other
+   * string in the copy module; the exemption is greppable and countable; and
+   * reverting the product decision means deleting this Set and nothing else.
+   *
+   * PUSH_BANNER_BODY is composed from ALERT_FRAMING_TITLE, so it is listed for
+   * the same reason and cannot drift from it.
+   */
+  const DETECTED_EXEMPT: ReadonlySet<string> = new Set([
+    content.ALERT_FRAMING_TITLE,
+    content.PUSH_BANNER_BODY,
+  ]);
+
+  it('exempts exactly two strings from the "detected" rule, and no more', () => {
+    // If this number moves, someone widened a clinical-safety exemption.
+    expect(DETECTED_EXEMPT.size).toBe(2);
+  });
+
+  it('never uses the word "detected" outside the alert stage, in any casing', () => {
     // Case-insensitive on purpose: "Detected" opening a sentence reads exactly
     // as the diagnostic assertion the rule forbids.
-    expect(everyString.filter((s) => /detect/i.test(s))).toEqual([]);
+    expect(everyString.filter((s) => /detect/i.test(s) && !DETECTED_EXEMPT.has(s))).toEqual([]);
   });
 
   it('never uses an exclamation mark', () => {

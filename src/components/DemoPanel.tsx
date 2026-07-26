@@ -18,7 +18,14 @@
  * top of the lamplit screens is how "old styling beside the new" gets back in.
  */
 
-import { useEffect, useState, type ChangeEvent, type ReactElement, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Microphone, SlidersHorizontal, X } from '@phosphor-icons/react';
 import { useAppState } from '../context/AppStateContext';
@@ -139,10 +146,34 @@ function overrideAtHour(hour: number): Date {
   return date;
 }
 
+/**
+ * How long "Fire push notification" waits before the banner arrives.
+ *
+ * PURELY A DEMO AFFORDANCE, and not a claim about anything: a real alert's
+ * latency is a property of the detector and the push service, not of this
+ * number. It exists so the person firing the notification can dismiss this
+ * panel and let go of the phone first, and the banner then lands on a resting
+ * Home screen with nobody touching it — which is the situation the alert entry
+ * path is actually about. Firing it instantly puts the banner on screen while
+ * the panel is still closing, and reads as the panel having drawn it.
+ */
+const PUSH_DELAY_MS = 5000;
+
 export function DemoPanel(): ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const [isPushVisible, setIsPushVisible] = useState(false);
+  // A ref, not state: a banner that has been scheduled but has not arrived is
+  // not rendered by anything, so re-rendering when one is in flight would be a
+  // render nothing can see.
+  const pushTimerRef = useRef<number | null>(null);
   const navigate = useNavigate();
+
+  const cancelPendingPush = (): void => {
+    if (pushTimerRef.current !== null) {
+      window.clearTimeout(pushTimerRef.current);
+      pushTimerRef.current = null;
+    }
+  };
   const {
     now,
     clockOverride,
@@ -236,6 +267,16 @@ export function DemoPanel(): ReactElement {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // A scheduled banner must not outlive the panel that scheduled it.
+  useEffect(
+    () => () => {
+      if (pushTimerRef.current !== null) {
+        window.clearTimeout(pushTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const goToScreen = (link: ScreenLink): void => {
     link.seed?.();
     navigate(link.path);
@@ -243,8 +284,24 @@ export function DemoPanel(): ReactElement {
   };
 
   const firePushNotification = (): void => {
-    setIsPushVisible(true);
+    // Re-firing restarts the wait rather than queueing a second banner: two
+    // pending timers would show one banner, then replace it with an identical
+    // one seconds later, which looks like a bug on camera.
+    cancelPendingPush();
     setIsOpen(false);
+    pushTimerRef.current = window.setTimeout(() => {
+      pushTimerRef.current = null;
+      setIsPushVisible(true);
+    }, PUSH_DELAY_MS);
+  };
+
+  // "Reset state" means everything, including a banner that has been fired but
+  // has not landed — otherwise it arrives seconds later into the state the
+  // reset just cleared and re-enters the alert path nobody asked for.
+  const resetAll = (): void => {
+    cancelPendingPush();
+    setIsPushVisible(false);
+    resetState();
   };
 
   const handlePushOpen = (): void => {
@@ -486,7 +543,7 @@ export function DemoPanel(): ReactElement {
             <section>
               <button
                 type="button"
-                onClick={resetState}
+                onClick={resetAll}
                 className="press tap w-full rounded-chip border border-line bg-surface px-3 py-2 text-text"
               >
                 Reset state

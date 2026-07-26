@@ -83,6 +83,11 @@ export function asInjectable(stream: MovementStream): InjectableMovementStream |
 const LIVE_EMIT_INTERVAL_MS = 4000;
 const BASELINE_LOOKBACK_HOURS = 24;
 
+/** The mock band's demo pulse — see `startDemoPulse`. 2.6s rather than a round
+ * number, so kicks do not land on every Nth poll of the live view and read as
+ * a metronome. */
+const DEMO_PULSE_INTERVAL_MS = 2600;
+
 /** Whether the band is reporting. A real implementation would derive this
  * from the link itself; the mock exposes a setter so the demo panel can put
  * the no-signal state on screen on cue (handoff README, screen 01's offline
@@ -125,7 +130,41 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
   private intervalId: number | null = null;
   private activeBurstCancel: (() => void) | null = null;
 
-  constructor(private variant: ActivityVariant) {}
+  /** Movement this stream has emitted since it was created, overlaid onto the
+   * ARRIVING bucket of the hourly window alone — see `getHourlyKickWindow`. */
+  private liveKicks = 0;
+  private demoPulseId: number | null = null;
+
+  constructor(private variant: ActivityVariant) {
+    this.startDemoPulse();
+  }
+
+  /**
+   * The mock band's own heartbeat: one kick every few seconds while it has
+   * signal, so the live view has something genuinely arriving to draw.
+   *
+   * MOCK-ONLY, AND IT HAS TO LIVE HERE. LiveView reads every value through
+   * this boundary and holds no literal readings of its own (see that file's
+   * header) — if the fake movement were manufactured in the screen, the screen
+   * would be inventing sensor data, which is the one thing the boundary exists
+   * to prevent. Real hardware implements `MovementStream` and simply has no
+   * equivalent of this method; nothing above the boundary changes.
+   *
+   * The interval is deliberately not a round number of poll ticks
+   * (LIVE_POLL_INTERVAL_MS is 1000 in LiveView): a kick landing on every Nth
+   * poll exactly reads as a metronome rather than as a baby.
+   */
+  private startDemoPulse(): void {
+    if (typeof window === 'undefined' || this.demoPulseId !== null) {
+      return;
+    }
+    this.demoPulseId = window.setInterval(() => {
+      if (!bandHasSignal) {
+        return;
+      }
+      this.emit({ timestamp: new Date(), moved: true });
+    }, DEMO_PULSE_INTERVAL_MS);
+  }
 
   /**
    * ONE QUESTION, ONE ANSWER. This is gated on `bandHasSignal` exactly as
@@ -208,13 +247,48 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
     return this.kickWindow(generateDailyKicks(this.variant, Date.now()));
   }
 
+  /**
+   * The live view's window — and the ONE window that reflects movement
+   * arriving right now.
+   *
+   * WHY THE OVERLAY EXISTS. Everything else here is a pure function of the
+   * seed and the clock, which is correct for a record and wrong for a screen
+   * that calls itself live: the hourly tally only changes when the hour does,
+   * so a live view left open drew a line that never moved. `liveKicks` counts
+   * movement this stream has actually emitted since it was created — its own
+   * demo pulse below, and anything the demo panel injects — and it lands on
+   * the ARRIVING bucket, which is exactly the bucket the trace already greys
+   * as "still coming in".
+   *
+   * IT TOUCHES NOTHING ELSE, and that is the whole design of it.
+   * `getWindow()`, `getBaseline()` and `getDailyKickWindow()` are untouched,
+   * so Home's card, the baseline and the downloaded report stay pure
+   * functions of the seed — design-plan.md §16.6's "a still record, not a
+   * live thing" holds exactly as written. The live view is the one surface
+   * that is supposed to be a live thing.
+   */
   getHourlyKickWindow(): KickWindow {
-    return this.kickWindow(generateHourlyKicks(this.variant, Date.now()));
+    const samples = generateHourlyKicks(this.variant, Date.now());
+    if (this.liveKicks === 0 || samples.length === 0) {
+      return this.kickWindow(samples);
+    }
+    const arriving = samples[samples.length - 1];
+    return this.kickWindow([
+      ...samples.slice(0, -1),
+      { timestamp: arriving.timestamp, kicks: arriving.kicks + this.liveKicks },
+    ]);
   }
 
   /** Fans out one sample to every current subscriber. The single place any
    * sample — real or injected — reaches the outside world. */
   private emit(sample: ActivitySample): void {
+    // Counted here rather than at each call site, because this is already the
+    // single place every sample — the demo pulse's, the panel's injected one,
+    // a burst's — reaches the outside world. Anything that emits movement
+    // moves the live trace, with no second list to keep in step.
+    if (sample.moved) {
+      this.liveKicks += 1;
+    }
     this.subscribers.forEach((cb) => cb(sample));
   }
 

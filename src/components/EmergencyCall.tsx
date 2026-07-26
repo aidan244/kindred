@@ -21,9 +21,13 @@
  * the point: there is no configuration here that could put a second number on
  * screen at equal weight, because there is no second number.
  *
+ * IT IS DOCKED ON EVERY SCREEN BUT THE REVIEW STEP. It used to appear only on
+ * the triage screens and the outcome screen's escalation state, which made the
+ * route to paramedics conditional on her having already started a check-in.
+ *
  * Two weights, unchanged:
- *  - `standard` (the triage screens): min-height 64, pill, PhoneCall Light
- *    28px, the label.
+ *  - `standard` (every docked appearance): min-height 64, pill, PhoneCall
+ *    Light 28px, the label.
  *  - `lead` (the outcome screen): the same pill in a column, the label plus
  *    the numeral at title size, so the NUMBER is the largest interactive
  *    element on the screen — the whole point of the lead variant.

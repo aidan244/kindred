@@ -44,8 +44,7 @@ export interface CheckInControlProps {
  * and in AlertFramingBlock alike. It used to be EXPORTED FROM HERE, which made
  * a component the source of truth for copy another component depended on — a
  * second, component-shaped copy module beside the real one. The label is also
- * quoted in prose throughout clinicalContent.ts (ALERT_FRAMING_BODY,
- * outcomeRoutineWaitNote), none of which could be kept in step with a constant
+ * quoted in prose in clinicalContent.ts, none of which could be kept in step with a constant
  * living over here. */
 
 export function CheckInControl({ variant }: CheckInControlProps): ReactElement {

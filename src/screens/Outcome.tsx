@@ -22,10 +22,12 @@
  *    primary and 999 is the quiet secondary route. Only the number and the
  *    framing change between tiers, nothing else (the brief's words).
  *  - routine: states ONLY what this app witnessed — that she pressed Send,
- *    at what time, and when her clinic is open. It contains NO red at all:
- *    its "call your clinic" affordance is a plain non-emergency control
- *    rendered here, never EmergencyCall, so the emergency token stays
- *    confined to the one component that owns it.
+ *    at what time, and when her clinic is open. Its "call your clinic"
+ *    affordance in the CONTENT is a plain non-emergency control rendered
+ *    here, never EmergencyCall — the content column carries no red. The red
+ *    on this state lives only in the dock, where the call control is now
+ *    permanent on every screen; the emergency token still belongs to the one
+ *    component that owns it.
  *
  * WHAT THE ROUTINE STATE USED TO CLAIM, AND WHY IT NO LONGER DOES. It drew a
  * three-row timeline — "Sent", "Received by your clinic" (hardcoded
@@ -59,8 +61,9 @@
  *    rectangle in the same position and does not move when she arrives here;
  *  - its own entrance animation — RouteTransition wraps the router.
  *
- * DOCK CLEARANCE. Escalate carries `dock-safe-tall` (268px), routine carries
- * `dock-safe` (112px). The emergency tier's dock measures taller than 268px
+ * DOCK CLEARANCE. Both states carry `dock-safe-tall` (268px) — routine moved
+ * to it when its dock gained the call control under Speak to Kindred, so both
+ * docks now stack two pills. The emergency tier's dock measures taller than 268px
  * only because of the `48px` of top padding the tall dock uses to run its
  * `to top, bg 66%, transparent` fade — the controls themselves start below
  * that, so no content ever sits underneath something tappable.
@@ -74,26 +77,25 @@ import {
   OUTCOME_DOWNLOAD_ROUTINE_LABEL,
   OUTCOME_EMERGENCY_ADVICE,
   OUTCOME_EMERGENCY_TITLE,
+  OUTCOME_ESCALATE_REPORT_HANDOVER,
   OUTCOME_ESCALATE_TRIAGE_LEAD,
   OUTCOME_ESCALATE_TRIAGE_TITLE,
+  OUTCOME_ROUTINE_LEAD,
   OUTCOME_ROUTINE_NO_SUBMISSION_TITLE,
   OUTCOME_ROUTINE_TITLE,
+  OUTCOME_ROUTINE_WORRIED_NOTE,
   emergencyHandoverLead,
   outcomeReportSentNote,
-  outcomeRoutineClinicHours,
-  outcomeRoutineSentLead,
-  outcomeRoutineWaitNote,
   patientFixture,
 } from '../data/clinicalContent';
 import { disposition } from '../logic/disposition';
 import { getEscalationTier } from '../logic/escalationTier';
-import { getTriageContact } from '../logic/triageContact';
 import { downloadReportPdf } from '../logic/reportPdf';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
-import { assembleReportData, formatClock, isClinicOpenAt } from './reportAssembly';
-import type { CategoryAnswer, TriageContact, VoiceNote } from '../types';
+import { assembleReportData } from './reportAssembly';
+import type { CategoryAnswer, VoiceNote } from '../types';
 
 interface OutcomeSnapshot {
   entryPath: 'alert' | 'adhoc';
@@ -162,9 +164,12 @@ export default function Outcome(): ReactElement {
 
   const result = disposition(snapshot.entryPath, snapshot.categoryAnswers);
   const tier = result === 'escalate' ? getEscalationTier(snapshot.categoryAnswers) : null;
-  const contact = getTriageContact(now(), patientFixture);
+  // No `getTriageContact` / `isClinicOpenAt` here any more: the routine state
+  // stopped naming a resolved contact and its opening hours when it was cut
+  // back to "nothing was flagged" plus the call route. `getTriageContact` is
+  // still the single implementation of that rule and is still called where the
+  // rule is actually needed — this screen simply no longer needs it.
   const clinic = patientFixture.clinic;
-  const clinicOpen = isClinicOpenAt(now(), clinic.hours);
   // NULLABLE ON PURPOSE. `null` means nothing was ever submitted, which is
   // reachable: /outcome is a real route and disposition('adhoc', []) is
   // 'routine'. The routine state renders nothing in place of the time rather
@@ -222,25 +227,23 @@ export default function Outcome(): ReactElement {
         onDownload={handleDownload}
       />
     ) : (
+      // `lead` prominence on this tier too, so BOTH escalating outcomes put
+      // the number itself at title size in the dock. The tiers still differ in
+      // what they say — only the emergency tier carries the handover line and
+      // the while-you-wait advice — but neither now presents "call now" over a
+      // compact pill.
       <EscalateOutcome
         title={OUTCOME_ESCALATE_TRIAGE_TITLE}
         lead={OUTCOME_ESCALATE_TRIAGE_LEAD}
         reportSentNote={outcomeReportSentNote(clinic.name)}
-        prominence="standard"
+        prominence="lead"
         onDownload={handleDownload}
       />
     );
   }
 
   return (
-    <RoutineOutcome
-      contact={contact}
-      clinicName={clinic.name}
-      clinicOpen={clinicOpen}
-      clinicOpensAt={clinic.hours.opens}
-      submittedAt={submittedAt}
-      onDownload={handleDownload}
-    />
+    <RoutineOutcome submittedAt={submittedAt} onDownload={handleDownload} />
   );
 }
 
@@ -272,18 +275,26 @@ function EscalateOutcome({
             The stack continues at 24px for the two quiet controls under the
             card, so nothing below the fold introduces a new spacing. */}
         <div className="flex flex-col gap-6">
+          {/* `display` rather than `title` on both escalating tiers. The
+              README allows one display line per screen and this is it: when
+              the answer is "call now", the instruction should be the largest
+              thing on the screen above the control that carries it out. The
+              routine state keeps `title`, so the two outcomes no longer read
+              at the same weight — which is the point. Urgency here is SIZE
+              and ORDER, never a new colour: red is still EmergencyCall's
+              alone, and nothing was tinted to make this feel louder. */}
           <div className="flex flex-col gap-3">
-            <h1 className="text-title text-text">{title}</h1>
+            <h1 className="text-display text-text">{title}</h1>
             <p className="text-lead text-text">{lead}</p>
           </div>
 
-          {/* Radius 22, padding 22, 8px gaps. Both lines are `body` role;
-              only the colour changes, because the second line is context
-              rather than a smaller-print aside — it says her answers already
-              went, which is precisely the thing she should not have to
-              squint at. */}
+          {/* Radius 22, padding 22, 8px gaps. The handover instruction leads
+              the card at full `text` weight — it is the thing she has to
+              actually do with the document, so it must not sit below the
+              muted line. Both other lines keep their roles. */}
           <div className="flex flex-col gap-2 rounded-card bg-surface p-[22px]">
             {advice ? <p className="text-body text-text">{advice}</p> : null}
+            <p className="text-body text-text">{OUTCOME_ESCALATE_REPORT_HANDOVER}</p>
             <p className="text-body text-text-muted">{reportSentNote}</p>
           </div>
 
@@ -308,66 +319,58 @@ function EscalateOutcome({
 }
 
 interface RoutineOutcomeProps {
-  contact: TriageContact;
-  clinicName: string;
-  clinicOpen: boolean;
-  clinicOpensAt: string;
-  /** Null when nothing was ever submitted — see this file's header. */
+  /** Null when nothing was ever submitted — see this file's header. The only
+   * thing this state still branches on: with no check-in behind it there is
+   * no flag to report either way. */
   submittedAt: Date | null;
   onDownload: () => void;
 }
 
-function RoutineOutcome({
-  contact,
-  clinicName,
-  clinicOpen,
-  clinicOpensAt,
-  submittedAt,
-  onDownload,
-}: RoutineOutcomeProps): ReactElement {
+function RoutineOutcome({ submittedAt, onDownload }: RoutineOutcomeProps): ReactElement {
   return (
     <>
-      <div className={`${CONTENT_CLASSES} dock-safe`}>
+      <div className={`${CONTENT_CLASSES} dock-safe-tall`}>
         <div className="flex flex-col gap-6">
-          {/* Title and lead say only what this app witnessed. With no
-              submission behind the screen there is no send to report, so the
-              lead is not rendered at all and the title claims nothing —
-              empty data renders nothing (handoff README, invariants). */}
+          {/* TWO THINGS, AND THE QUALIFIER THAT MAKES THE FIRST ONE SAFE.
+              This state used to report the send, the clinic's hours and a
+              wait note. It now says only that nothing was flagged, and that
+              she can still call — with the second sentence of the lead
+              scoping "flagged" to her ANSWERS rather than to the baby. See
+              the note on OUTCOME_ROUTINE_LEAD in clinicalContent.ts: without
+              that sentence this screen is the false reassurance the product
+              exists to avoid, and it is the first thing to check if this copy
+              is ever edited.
+
+              With nothing submitted the title claims nothing at all — there
+              was no check-in, so there is no flag to report either way. */}
           <div className="flex flex-col gap-3">
             <h1 className="text-title text-text">
               {submittedAt ? OUTCOME_ROUTINE_TITLE : OUTCOME_ROUTINE_NO_SUBMISSION_TITLE}
             </h1>
-            {submittedAt && (
-              <p className="text-lead text-text">
-                {outcomeRoutineSentLead(clinicName, formatClock(submittedAt))}
-              </p>
-            )}
+            {submittedAt && <p className="text-lead text-text">{OUTCOME_ROUTINE_LEAD}</p>}
           </div>
 
-          {/* The clinic's hours, and nothing about what anyone there is
-              doing with it. The three-row "Sent / Received / Clinician
-              reviewing" card that used to sit under this line asserted a
-              receipt and a reader that nothing in this app confirms. */}
-          <p className="text-body text-text">
-            {outcomeRoutineClinicHours(clinicName, clinicOpen, clinicOpensAt)}
-          </p>
+          {/* Rule 2, at the moment it matters most: her perception wins, and
+              she does not need this screen's agreement to act on it. */}
+          <p className="text-body text-text">{OUTCOME_ROUTINE_WORRIED_NOTE}</p>
 
           <button type="button" onClick={onDownload} className={CONTENT_CONTROL_CLASSES}>
             <DownloadSimple size={20} weight="light" className="shrink-0" aria-hidden="true" />
             {OUTCOME_DOWNLOAD_ROUTINE_LABEL}
           </button>
-
-          <p className="text-body text-text">{outcomeRoutineWaitNote(contact.label)}</p>
-
         </div>
       </div>
 
-      {/* Standard dock. In this state "raise a concern" means start another
-          check-in, not call — so this is the one outcome that carries the
-          ordinary Speak-to-Kindred bar, in the same rectangle it occupies on
-          Home and the live view. */}
-      <Dock>
+      {/* In this state "raise a concern" means start another check-in, not
+          call — so this is the one outcome that carries the ordinary
+          Speak-to-Kindred bar, in the same rectangle it occupies on Home and
+          the live view. The call control sits under it here too: a routine
+          disposition is a statement about this check-in, not a promise about
+          the next hour, and the escalate state's own dock already leads with
+          the same control. */}
+      <Dock variant="tall">
         <CheckInControl variant="bar" />
+        <EmergencyCall prominence="standard" />
       </Dock>
     </>
   );

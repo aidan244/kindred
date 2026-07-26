@@ -78,9 +78,12 @@ event is rare. So:
   on the phone decides attendance. 999 is a distinct, secondary route for
   heavy bleeding, collapse, or fitting.
 - Red appears exactly once in the product: on the emergency call control.
-  The same single component renders it in two places — docked on every
-  screen of the triage flow, and as the lead control on the outcome
-  screen's escalation state — never anywhere else.
+  That single component is now docked on every screen except the review
+  step — under Speak to Kindred where that control is present, alone on the
+  triage screens, and as the lead control on the outcome screen's
+  escalation state. It is also the second action on the alert framing
+  block. Red appears nowhere else. Reaching paramedics no longer depends on
+  her having already started a check-in.
 - A report goes to the clinic on every outcome.
 - The activity visuals are deliberately ambient and non-clinical — no CTG
   traces, waveforms, or scores — because monitor aesthetics are a fear
