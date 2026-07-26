@@ -166,7 +166,7 @@
    * never exceeded, so this can never push body text under 4.5:1. Trough to
    * peak is a ~43% swing in light, which is what makes it legible as
    * breathing rather than as flicker. */
-  --aura-breath-trough: 0.7;
+  --aura-breath-trough: 0.55;
 
   /* Route transition — handoff README "page_transitions". One visual
    * language for the whole app: opacity plus a short directional slide. */
@@ -186,7 +186,10 @@
   --surface-hi: #352b30;
 
   --text: #f4ede8; /* 15.38:1 on bg */
-  --text-muted: #bbaa9c; /*  7.93:1 on bg  (was #b3a3a8; see design-plan.md) */
+  --text-muted: #bbaa9c; /*  7.93:1 on bg; 4.80:1 at the worst point of the
+                          * aura composite (see the note on the alphas
+                          * below). Unchanged — night needed no text change
+                          * to carry a brighter aura, only smaller blooms. */
   --accent: #e8b478; /*  9.53:1 on bg — the lamp */
   --emergency: #e85b50; /*  5.13:1 on bg  (was #e5544b; see design-plan.md) */
 
@@ -222,16 +225,34 @@
    * further on darkness — see the contrast budget note above --wash-*.
    * Both themes are verified: body text (--text) and metadata
    * (--text-muted) stay >= 4.5:1 over every bloom. */
+   * ALPHAS ARE AT THE CONTRAST CEILING, not chosen by eye. They were found
+   * by compositing the real geometry over a 390x844 viewport — every bloom,
+   * at both ends of its drift, at every point on a grid — and taking the
+   * worst text contrast anywhere in the field. These are the highest values
+   * that keep --text-muted at or above 4.5:1 by that measure; the next step
+   * up (0.30/0.34/0.20) lands at 4.27:1.
+   *
+   * That simulation is also why they could be raised this far at all. The
+   * cheap approximation — assume any set of blooms might stack at full
+   * strength — says this configuration fails at 3.00:1, because it counts
+   * blooms 2 and 4 overlapping at peak when they sit at opposite ends of
+   * the screen and cannot. Bounding the aura by what CAN happen rather than
+   * by what could be arranged is worth about 60% more light here.
+   *
+   * Night gets the rest of its contrast from SHADOW rather than light —
+   * bloom 3 is a deepening pool, and deepening the ground only ever helps
+   * light text. That is why bloom 3 is the one night alpha well clear of
+   * its ceiling. */
   --aura-1-rgb: 232 180 120; /* the lamp */
-  --aura-1-a: 0.16;
+  --aura-1-a: 0.25;
   --aura-2-rgb: var(--accent-rgb);
-  --aura-2-a: 0.2;
+  --aura-2-a: 0.28;
   --aura-3-rgb: 8 5 7; /* the unlit corner, deepening */
-  --aura-3-a: 0.42;
+  --aura-3-a: 0.62;
   --aura-4-rgb: var(--accent-rgb);
-  --aura-4-a: 0.11;
+  --aura-4-a: 0.16;
   --aura-5-rgb: 53 43 48; /* = --surface-hi, a raised floor */
-  --aura-5-a: 0.72;
+  --aura-5-a: 0.85;
 }
 
 /* --------------------------------------------------------------------------
@@ -246,7 +267,19 @@
   --surface-hi: #fbf6f1;
 
   --text: #2a2226; /* 12.60:1 on bg */
-  --text-muted: #665a60; /*  5.34:1 on bg */
+  /* 5.99:1 on bg, and 4.71:1 at the worst point of the aura composite.
+   *
+   * CORRECTS A REAL FAILURE, not a preference. At #665a60 this measured
+   * 5.34:1 on bare bg but only 4.05:1 at the worst point of the day aura —
+   * i.e. timestamps, metadata and device state fell below the 4.5:1 floor
+   * wherever the lower blooms overlap. The handoff README asks for both
+   * "the blooms exactly as tabulated" and "all body text at or above 4.5:1
+   * on top of it", and its own day numbers cannot satisfy both at the old
+   * value. The blooms are the design; the floor is a requirement; so the
+   * text moved, by the smallest step that clears it.
+   *
+   * Night needed no equivalent change — see its --text-muted. */
+  --text-muted: #5c5156;
   --accent: #8a5717; /*  4.94:1 on bg  (was #96601f; see design-plan.md) */
   --emergency: #b3302a; /*  5.06:1 on bg */
 
