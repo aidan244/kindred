@@ -548,6 +548,12 @@ export class SupabaseBackend implements HeldBackend {
       onboardingHistory: patientRow.onboarding_history ?? EMPTY_ONBOARDING_ANSWERS,
       recentActivity: binsToActivitySamples((binRows as MovementBinRow[] | null) ?? []),
       activityBaseline: baselineToOverallFraction((baselineRow as BaselineRow | null) ?? null),
+      // EMPTY, AND HONESTLY SO. There is no kicks table in the Supabase schema
+      // yet — see SupabaseMovementStream's kick section, which returns the same
+      // empty window for the same reason. The report prints an absence
+      // statement in place of the graph rather than a flat line at zero, which
+      // would be a confirmed week of no kicks manufactured out of no data.
+      dailyKicks: { samples: [], settledIndex: -1 },
       disclaimer: REPORT_DISCLAIMER,
     };
   }

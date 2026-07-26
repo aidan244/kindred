@@ -374,6 +374,21 @@ export function CheckInConversation({
     }
 
     const wasYes = existing?.gateAnswer === 'yes';
+
+    // A gate flip DISCARDS this category's follow-ups (see the comment on
+    // `followUpAnswers` below), so any voice note recorded into one goes with
+    // them — its object URL has to be released rather than leaked for the life
+    // of the tab. The condition is repeated verbatim rather than hoisted into
+    // a const, because the ternary below relies on TypeScript narrowing
+    // `existing` through `wasYes` and an alias would break that.
+    if (value === 'no' || !wasYes) {
+      existing?.followUpAnswers.forEach((followUpAnswer) => {
+        if (followUpAnswer.voiceNote) {
+          revokeVoiceNoteUrl(followUpAnswer.voiceNote);
+        }
+      });
+    }
+
     const next: CategoryAnswer = {
       categoryId: category.id,
       gateAnswer: value,
@@ -451,16 +466,26 @@ export function CheckInConversation({
     category: RedFlagCategory,
     followUpId: string,
     value: FollowUpAnswerValue,
-    isReask: boolean
+    isReask: boolean,
+    /** Only ever supplied by a `text` follow-up — the one type with a mic. */
+    voiceNote?: VoiceNote | null
   ): void => {
     const existing = findAnswer(category.id);
     if (!existing) {
       return;
     }
-    const alreadyAnswered = existing.followUpAnswers.some((f) => f.followUpId === followUpId);
-    const nextFollowUpAnswers = alreadyAnswered
-      ? existing.followUpAnswers.map((f) => (f.followUpId === followUpId ? { followUpId, value } : f))
-      : [...existing.followUpAnswers, { followUpId, value }];
+    const previous = existing.followUpAnswers.find((f) => f.followUpId === followUpId);
+    // A re-ask REPLACES the answer, so the note it replaces is dropped and its
+    // object URL has to go with it — the same rule the closing beat follows
+    // below. Guarded on identity: re-sending the very same note (she edited
+    // only the text) must not revoke a URL that is still on screen.
+    if (previous?.voiceNote && previous.voiceNote !== voiceNote) {
+      revokeVoiceNoteUrl(previous.voiceNote);
+    }
+    const next = { followUpId, value, voiceNote: voiceNote ?? undefined };
+    const nextFollowUpAnswers = previous
+      ? existing.followUpAnswers.map((f) => (f.followUpId === followUpId ? next : f))
+      : [...existing.followUpAnswers, next];
     setCategoryAnswers(
       categoryAnswers.map((a) =>
         a.categoryId === category.id ? { ...a, followUpAnswers: nextFollowUpAnswers } : a
@@ -594,7 +619,14 @@ export function CheckInConversation({
               followUp={followUp}
               ariaLabel={followUp.prompt}
               onMount={handleChipRowReveal}
-              onSubmit={(value) => handleFollowUpAnswer(category, followUp.id, value, true)}
+              // A re-ask reopens what she already said rather than a blank box.
+              // Only the text widget holds a draft to prefill; every other type
+              // ignores these and commits on a tap.
+              initialText={fuAnswer?.value.type === 'text' ? fuAnswer.value.value : undefined}
+              initialVoiceNote={fuAnswer?.voiceNote ?? null}
+              onSubmit={(value, voiceNote) =>
+                handleFollowUpAnswer(category, followUp.id, value, true, voiceNote)
+              }
             />
           )}
 
@@ -609,16 +641,33 @@ export function CheckInConversation({
               <FollowUpInput
                 followUp={followUp}
                 ariaLabel={followUp.prompt}
-                onSubmit={(value) => handleFollowUpAnswer(category, followUp.id, value, false)}
+                onSubmit={(value, voiceNote) =>
+                  handleFollowUpAnswer(category, followUp.id, value, false, voiceNote)
+                }
               />
             </Beat>
           )}
 
           {!isReasking && fuAnswer && (
             <>
-              <Beat key={`fu-${followUp.id}-her`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
-                <HerBubble>{formatFollowUpAnswerValue(fuAnswer.value, followUp.options)}</HerBubble>
-              </Beat>
+              {/* An empty bubble is not an answer. A `text` follow-up may be
+                  sent blank (modelling decision (d)) and may be answered by
+                  voice alone, so the words bubble is withheld when there are
+                  no words — rather than mounting an empty rounded rectangle
+                  under the question. Every other type always formats to
+                  something. */}
+              {formatFollowUpAnswerValue(fuAnswer.value, followUp.options).trim().length > 0 && (
+                <Beat key={`fu-${followUp.id}-her`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
+                  <HerBubble>{formatFollowUpAnswerValue(fuAnswer.value, followUp.options)}</HerBubble>
+                </Beat>
+              )}
+              {/* Her recording, as one of her own bubbles, in the place she
+                  said it — the same treatment the detail beat's note gets. */}
+              {fuAnswer.voiceNote && (
+                <Beat key={`fu-${followUp.id}-voicenote`} delayMs={0} reduced={reduced} onReveal={handleReveal}>
+                  <VoiceNoteBubble voiceNote={fuAnswer.voiceNote} />
+                </Beat>
+              )}
               <ChangeThisButton
                 label={followUp.prompt}
                 onClick={() => onChangeThisFollowUp(category.id, followUp.id)}

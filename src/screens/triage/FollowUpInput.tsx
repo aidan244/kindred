@@ -15,11 +15,16 @@
  *    "Continue" commits the selection. Always enabled — an empty selection
  *    is a legitimate, non-demanding answer (src/data/clinicalContent.ts
  *    modelling decision (d)).
- *  - `number` / `text`: an inline composer with a Send action. No mic, no
- *    voice note, no Skip — the category-level detail beat (DetailBeat.tsx)
- *    is the one place those live. `text` can be sent empty; `number` keeps
- *    Send disabled until a value is entered, because there is no honest
- *    "blank" number to record (modelling decision (d)).
+ *  - `text`: the SHARED composer (src/components/Composer.tsx), Send and mic
+ *    included, so a free-text answer can be spoken as well as typed —
+ *    wherever she can type in this product she can record instead. No Skip:
+ *    it is a question inside the questionnaire, and it can be sent empty,
+ *    because a blank answer is legitimate (modelling decision (d)).
+ *  - `number`: a numeric field with a Send action, and deliberately NO mic —
+ *    a recording is not a number, so a mic here would offer a way to answer
+ *    that this input cannot record. Send stays disabled until a value is
+ *    entered, because there is no honest "blank" number (modelling decision
+ *    (d)).
  *
  * Every widget here calls its `onSubmit`/`onSelect` exactly once, with a
  * fully-formed value — it never partially commits.
@@ -44,15 +49,15 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactElement } fr
 import { PaperPlaneRight } from '@phosphor-icons/react';
 import {
   CHECK_IN_CONTINUE_LABEL,
-  COMPOSER_PLACEHOLDER,
   COMPOSER_SEND_LABEL,
   YES_NO_OPTIONS,
 } from '../../data/clinicalContent';
 import { hapticTick } from '../../logic/haptics';
+import { Composer } from '../../components/Composer';
 import { usePrefersReducedMotion } from '../../components/usePrefersReducedMotion';
 import { STAGGER_MS, useBeatRevealed } from './Beat';
 import type { RedFlagFollowUp } from '../../data/clinicalContent';
-import type { FollowUpAnswerValue } from '../../types';
+import type { FollowUpAnswerValue, VoiceNote } from '../../types';
 
 /** One chip, handoff README 03/04: min-height 56, pill, padding 0 24,
  * `surface-hi`, label role, and a 1px `line` seam ("line — seams only, 1px,
@@ -358,16 +363,47 @@ function NumberInput({
   );
 }
 
+/**
+ * The `text` follow-up: THE SHARED COMPOSER (src/components/Composer.tsx),
+ * not a second text box that looks like it.
+ *
+ * This used to be a hand-rolled card holding its own growing textarea and its
+ * own Send pill — a near-copy of the composer, and the drift showed: the
+ * composer had a mic and this did not, so whether she could speak her answer
+ * instead of typing it depended on which beat of the same conversation she
+ * happened to be in. It is now the same component, so the mic, the
+ * hidden-sizer growth (no fixed height, no truncation at 200% text) and the
+ * Send treatment cannot diverge again.
+ *
+ * `allowEmptySend`, because this beat has no Skip: a blank answer to a text
+ * follow-up is legitimate (src/data/clinicalContent.ts, modelling decision
+ * (d)), and the composer's default would disable Send and strand her on a
+ * question she has no answer to.
+ *
+ * The entrance style stays on a bare wrapper rather than moving onto the
+ * composer's own card. `beat-in` releases opacity when it ends — but only for
+ * the element it runs on, and the card is the element that CONTAINS the
+ * `press` targets (see useEnterStyle's note on why an inline opacity here
+ * silently kills press feedback).
+ */
 function TextInput({
+  id,
   ariaLabel,
   onSubmit,
   onMount,
+  initialText = '',
+  initialVoiceNote = null,
 }: {
+  /** Namespaces the composer's field ids — unique per mounted follow-up. */
+  id: string;
   ariaLabel: string;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string, voiceNote: VoiceNote | null) => void;
   onMount?: (element: HTMLDivElement) => void;
+  initialText?: string;
+  initialVoiceNote?: VoiceNote | null;
 }): ReactElement {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
+  const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(initialVoiceNote);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const enterStyle = useEnterStyle();
 
@@ -379,64 +415,19 @@ function TextInput({
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="rounded-card border border-line bg-surface p-4"
-      style={enterStyle(0)}
-    >
-      {/*
-        The field GROWS with what she writes, using the same hidden-sizer
-        construction as src/components/Composer.tsx and QuestionStep's
-        OptionalDetailField: an invisible span of the same text shares one
-        grid cell with the textarea, so the browser re-lays the box out for
-        free on a width, font or text-scale change.
-
-        It used to be a bare `rows={2}`, which is precisely the box the
-        invariant forbids — at 200% text a longer answer scrolls inside it
-        instead of the box growing, and this is the one place in the check-in
-        where she types a free-text CLINICAL answer, so the content that
-        disappeared behind that scroll was content going to her clinic.
-
-        `tap` on the textarea: it is the primary control of this beat, and a
-        single line of body text is ~29px, well under the 56px floor. The grid
-        row takes the max of the sizer and the field's minimum, so the field
-        stretches to 56px when empty and the sizer drives it taller from
-        there.
-      */}
-      <div className="grid">
-        <span
-          aria-hidden="true"
-          className="invisible col-start-1 row-start-1 text-body"
-          style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}
-        >
-          {text.length > 0 ? `${text} ` : COMPOSER_PLACEHOLDER}
-        </span>
-        <textarea
-          aria-label={ariaLabel}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          rows={1}
-          placeholder={COMPOSER_PLACEHOLDER}
-          className="tap col-start-1 row-start-1 w-full resize-none overflow-hidden bg-transparent text-body text-text placeholder:text-text-muted focus:outline-none"
-          style={{ overflowWrap: 'break-word' }}
-        />
-      </div>
-      {/* Send sits where the composer's Send sits (README 05) — bottom
-          right of the card, 16px under the field. It is never disabled
-          here: an empty text follow-up is a legitimate answer. */}
-      <div className="mt-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            hapticTick();
-            onSubmit(text.trim());
-          }}
-          className={ACCENT_PILL_CLASS}
-        >
-          <PaperPlaneRight size={20} weight="light" aria-hidden="true" />
-          {COMPOSER_SEND_LABEL}
-        </button>
-      </div>
+    <div ref={containerRef} style={enterStyle(0)}>
+      <Composer
+        id={id}
+        value={text}
+        onChange={setText}
+        voiceNote={voiceNote}
+        onVoiceNoteChange={setVoiceNote}
+        // Composer trims what it hands up and fires the send haptic itself,
+        // so neither is repeated here.
+        onSend={onSubmit}
+        ariaLabel={ariaLabel}
+        allowEmptySend
+      />
     </div>
   );
 }
@@ -444,8 +435,24 @@ function TextInput({
 export interface FollowUpInputProps {
   followUp: RedFlagFollowUp;
   ariaLabel: string;
-  onSubmit: (value: FollowUpAnswerValue) => void;
+  /**
+   * `voiceNote` only ever arrives from a `text` follow-up — the one type with
+   * a composer, and therefore the one type with a mic. Every other widget
+   * omits it, which is why it is a second parameter rather than a member of
+   * `FollowUpAnswerValue`: a chip row has no note to report, not a null one.
+   */
+  onSubmit: (value: FollowUpAnswerValue, voiceNote?: VoiceNote | null) => void;
   onMount?: (element: HTMLDivElement) => void;
+  /**
+   * What she answered last time, on a RE-ASK — so "Change this" reopens what
+   * she already said instead of a blank box (design-plan.md §14.7, "never
+   * delete something she said"). `text` only: it is the one type whose widget
+   * holds a draft rather than committing on a single tap, and it is now the one
+   * type that can hold a recording she would otherwise lose without ever being
+   * told. The closing detail beat already worked this way (DetailBeat.tsx).
+   */
+  initialText?: string;
+  initialVoiceNote?: VoiceNote | null;
 }
 
 // formatFollowUpAnswerValue moved to src/data/clinicalContent.ts, next to
@@ -459,7 +466,14 @@ export { formatFollowUpAnswerValue } from '../../data/clinicalContent';
 /** Renders whichever input `followUp.type` calls for — the data-driven
  * switch the brief asks for ("one data-driven component... never touching
  * flow code"). A new follow-up of an existing type needs no change here. */
-export function FollowUpInput({ followUp, ariaLabel, onSubmit, onMount }: FollowUpInputProps): ReactElement {
+export function FollowUpInput({
+  followUp,
+  ariaLabel,
+  onSubmit,
+  onMount,
+  initialText,
+  initialVoiceNote,
+}: FollowUpInputProps): ReactElement {
   switch (followUp.type) {
     case 'yesno':
       return (
@@ -499,9 +513,12 @@ export function FollowUpInput({ followUp, ariaLabel, onSubmit, onMount }: Follow
     case 'text':
       return (
         <TextInput
+          id={`fu-${followUp.id}`}
           ariaLabel={ariaLabel}
           onMount={onMount}
-          onSubmit={(value) => onSubmit({ type: 'text', value })}
+          initialText={initialText}
+          initialVoiceNote={initialVoiceNote}
+          onSubmit={(value, voiceNote) => onSubmit({ type: 'text', value }, voiceNote)}
         />
       );
     default: {
