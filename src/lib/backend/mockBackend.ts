@@ -10,8 +10,14 @@
  * fixture or ActivityVariant is introduced in this phase.
  */
 
-import type { ActivityVariant, OnboardingAnswers, RedFlagAnswer } from '../../types';
-import { patientFixture, REPORT_DISCLAIMER } from '../../data/clinicalContent';
+import type { ActivityVariant, CategoryAnswer, OnboardingAnswers } from '../../types';
+import {
+  patientFixture,
+  REPORT_DISCLAIMER,
+  // Aliased: `../report/clinicalRedFlags.ts` exports an unrelated type under
+  // the same name, for the PDF's own table. These are not interchangeable.
+  redFlagCategories as questionnaireCategories,
+} from '../../data/clinicalContent';
 import { disposition } from '../../logic/disposition';
 import { getTriageContact } from '../../logic/triageContact';
 import { getMovementStream } from '../../sensors/MovementStream';
@@ -136,7 +142,7 @@ export class MockBackend implements HeldBackend {
     return session;
   }
 
-  async saveRedFlagAnswers(sessionId: SessionId, answers: RedFlagAnswer[]): Promise<Session> {
+  async saveRedFlagAnswers(sessionId: SessionId, answers: CategoryAnswer[]): Promise<Session> {
     const session = this.requireSession(sessionId);
     const updated: Session = { ...session, redFlagAnswers: answers };
     this.sessions.set(sessionId, updated);
@@ -208,8 +214,13 @@ export class MockBackend implements HeldBackend {
       gestationWeeks: patientFixture.gestationWeeks,
       entryPath: session.entryPath,
       submittedAt,
-      redFlagAnswers: session.redFlagAnswers,
+      categoryAnswers: session.redFlagAnswers,
+      // Derived, never asserted — see ReportData.endedBeforeAllCategories.
+      endedBeforeAllCategories: questionnaireCategories.some(
+        (category) => !session.redFlagAnswers.some((a) => a.categoryId === category.id)
+      ),
       freeTextDescription: session.freeTextDescription,
+      freeTextVoiceNote: null,
       onboardingHistory: EMPTY_ONBOARDING_ANSWERS,
       recentActivity: stream.getWindow(24),
       activityBaseline: stream.getBaseline(),

@@ -101,8 +101,11 @@ describe('sessionFromRow', () => {
     expect(session.id).toBe('session-1');
     expect(session.entryPath).toBe('adhoc');
     expect(session.completedAt).toEqual(new Date('2026-01-01T00:10:00Z'));
+    // A stored row is one boolean per question, so it maps to a category's
+    // GATE answer with no follow-ups — the table holds none to map. See
+    // sessionFromRow for why that is a schema gap rather than a mapper one.
     expect(session.redFlagAnswers).toEqual([
-      { questionId: 'movement', answer: 'no', detail: 'a bit less' },
+      { categoryId: 'movement', gateAnswer: 'no', followUpAnswers: [], detail: 'a bit less' },
     ]);
     expect(session.freeTextDescription).toBe('Feeling tired');
     expect(session.disposition).toBe('routine');

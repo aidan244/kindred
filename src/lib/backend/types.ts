@@ -10,7 +10,7 @@
 import type {
   ActivityVariant,
   EntryPath,
-  RedFlagAnswer,
+  CategoryAnswer,
   ReportData,
   TriageContact,
 } from '../../types';
@@ -50,7 +50,18 @@ export interface Session {
   alertId: AlertId | null;
   startedAt: Date;
   completedAt: Date | null;
-  redFlagAnswers: RedFlagAnswer[];
+  /**
+   * Her red-flag answers, in the frontend's own shape.
+   *
+   * This was `RedFlagAnswer[]` — a flat {questionId, answer} model the
+   * frontend replaced with the six-category one (`CategoryAnswer`, a gate
+   * answer plus its follow-ups) before this backend was written. The two
+   * drifted apart silently: `disposition()` already took `CategoryAnswer[]`,
+   * so the old type could not have been passed to it without a cast.
+   * CLAUDE.md's rule applies — reuse `src/types.ts` rather than keep a
+   * parallel shape.
+   */
+  redFlagAnswers: CategoryAnswer[];
   freeTextDescription: string;
   /** Set by completeSession(), computed from disposition() — never provided
    * by a caller, so there is exactly one place the rule is evaluated. */

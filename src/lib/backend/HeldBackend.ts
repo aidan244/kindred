@@ -19,7 +19,7 @@
  * with it.
  */
 
-import type { RedFlagAnswer } from '../../types';
+import type { CategoryAnswer } from '../../types';
 import type {
   Alert,
   AlertId,
@@ -35,7 +35,7 @@ import type {
 export interface HeldBackend {
   // -- sessions -------------------------------------------------------
   createSession(entryPath: SessionEntryPath, alertId?: AlertId): Promise<Session>;
-  saveRedFlagAnswers(sessionId: SessionId, answers: RedFlagAnswer[]): Promise<Session>;
+  saveRedFlagAnswers(sessionId: SessionId, answers: CategoryAnswer[]): Promise<Session>;
   saveSelfReport(sessionId: SessionId, freeTextDescription: string): Promise<Session>;
   /** Computes disposition and the triage contact she's shown, persists
    * both on the session, and returns it. */

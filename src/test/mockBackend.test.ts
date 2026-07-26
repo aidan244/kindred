@@ -2,23 +2,32 @@ import { describe, expect, it } from 'vitest';
 import { MockBackend } from '../lib/backend/mockBackend';
 import { disposition } from '../logic/disposition';
 import { getTriageContact } from '../logic/triageContact';
-import { patientFixture, redFlagQuestions } from '../data/clinicalContent';
-import type { RedFlagAnswer } from '../types';
+import {
+  BLEEDING_CATEGORY_ID,
+  patientFixture,
+  redFlagCategories,
+} from '../data/clinicalContent';
+import type { CategoryAnswer } from '../types';
 
-const NO_ANSWERS: RedFlagAnswer[] = redFlagQuestions.map((q) => ({
-  questionId: q.id,
-  answer: q.flagWhen === 'yes' ? 'no' : 'yes',
+/**
+ * Fixtures rebuilt against the six-category questionnaire.
+ *
+ * They used to be built from `redFlagQuestions` and a per-question `flagWhen`
+ * — the flat model the frontend replaced before this backend was written, and
+ * which the old fixture still keyed by the retired id 'bleeding-fluid'.
+ * `disposition()` reads `gateAnswer` and nothing else, so these express the
+ * same two cases the test always meant: nothing flagged, and one thing
+ * flagged.
+ */
+const NO_ANSWERS: CategoryAnswer[] = redFlagCategories.map((category) => ({
+  categoryId: category.id,
+  gateAnswer: 'no',
+  followUpAnswers: [],
 }));
 
-function positiveAnswerFor(questionId: string): RedFlagAnswer {
-  const question = redFlagQuestions.find((q) => q.id === questionId)!;
-  return { questionId, answer: question.flagWhen };
-}
-
-const ONE_POSITIVE_FLAG: RedFlagAnswer[] = [
-  ...NO_ANSWERS.filter((a) => a.questionId !== 'bleeding-fluid'),
-  positiveAnswerFor('bleeding-fluid'),
-];
+const ONE_POSITIVE_FLAG: CategoryAnswer[] = NO_ANSWERS.map((answer) =>
+  answer.categoryId === BLEEDING_CATEGORY_ID ? { ...answer, gateAnswer: 'yes' } : answer
+);
 
 describe('MockBackend session lifecycle / disposition', () => {
   it('alert path with no positive flags still escalates, through the backend seam', async () => {
