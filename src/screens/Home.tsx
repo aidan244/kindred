@@ -10,7 +10,7 @@
  * Purpose (README §01): reassurance at a glance, and one tap to raise a
  * concern. Composition, top to bottom — greeting → the Kindred avatar in its
  * breathing lamp glow → two muted metadata captions → the live-data card →
- * (docked) Speak to Kindred + the operator route.
+ * the "Worried?" invitation → (docked) Speak to Kindred + the operator route.
  *
  * Safety rule: this screen shows the shape of the data and STOPS. No summary,
  * no score, no interpretation in words — a number, a trace, a plain sync
@@ -49,6 +49,7 @@ import { LiveDataCard } from '../components/LiveDataCard';
 import { useAppState } from '../context/AppStateContext';
 import {
   HOME_WINDOW_LABEL,
+  HOME_WORRIED_PROMPT,
   homeGreeting,
   homeSyncedAgo,
   patientFixture,
@@ -140,7 +141,10 @@ export default function Home(): ReactElement {
           /* Decorative presence, not a status light: it carries no face, no
              expression and no colour change, and KindredAvatar marks it
              aria-hidden itself. `mx-auto mt-5 mb-1` is the README's
-             `margin: 20px auto 4px`. */
+             `margin: 20px auto 4px`. The 4px bottom margin now collapses
+             against the captions' own 20px, which is the same 20px the README
+             asks for above them — the invitation that used to occupy that gap
+             has moved to the foot of the column. */
           <KindredAvatar size={AVATAR_SIZE} className="mx-auto mt-5 mb-1" />
         )}
 
@@ -157,6 +161,25 @@ export default function Home(): ReactElement {
         <div className={alertActive ? undefined : 'mt-5'}>
           <LiveDataCard showNumber={!alertActive} onOpenLiveView={handleOpenLiveView} />
         </div>
+
+        {/* The invitation, centred at the foot of the column so it sits
+            directly above the docked control it names, rather than a screen
+            away from it under the mark.
+            STILL PAGE COPY, NOT A DOCK CHILD. It stays in the scroll column
+            instead of being portalled in above CheckInControl, because the
+            dock is one shared rectangle across every screen (Dock.tsx) — a
+            line added to Home's copy of it would push the pill to a different
+            height here than everywhere else, and the control would visibly
+            jump on entering and leaving this screen.
+            ONLY IN THIS BRANCH. When the alert is active, AlertFramingBlock
+            already says "You know your baby best. Speak to Kindred if anything
+            feels different." — printing a second, shorter version of the same
+            sentence on the same screen would read as two different offers.
+            Plain text, not a control: the dock below carries the actual accent
+            pill for this action (see the dock's note). */}
+        {!alertActive && (
+          <p className="mt-5 text-center text-lead text-text">{HOME_WORRIED_PROMPT}</p>
+        )}
       </div>
 
       {/* The dock. Primary weight on 01, where Speak to Kindred is this

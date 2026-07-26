@@ -42,6 +42,35 @@
  * floor. See src/styles/tokens.css for what each theme spends its budget on
  * and why day's core is a warm white rather than the accent.
  * ---------------------------------------------------------------------------
+ * WHY THE BREATH WAS AMPLIFIED, AND WHAT WAS *NOT* TOUCHED TO DO IT
+ *
+ * Reported again as invisible after the one-orb fix above. The orb itself was
+ * now visible; its BREATH was not, for three compounding reasons, and the fix
+ * had to avoid the one lever that would have been easiest to reach for.
+ *
+ *  1. TOO SLOW. The breath ran at 13-23s while `--dur-breath` — the cycle the
+ *     avatar, the pairing mark and the recording ring all use — is 9s. A
+ *     half-cycle of 6.5-11.5s spreads a small luminance change so thinly that
+ *     nothing registers as changing. The core now runs on `--dur-breath`
+ *     itself; the outer layers lag just behind it.
+ *  2. TOO SHALLOW. The trough was 0.55 of a peak alpha of 0.08-0.18 — under
+ *     heavy blur, a swing of a few RGB steps. Now 0.15, a ~6.7x swing.
+ *  3. SELF-CANCELLING. The four layers were deliberately scattered in phase so
+ *     they would not pulse as one object; the side effect was that one layer
+ *     dimmed while another brightened and the total light held roughly still.
+ *     They now start nearly in phase and drift apart naturally. See
+ *     `breathDelay`.
+ *
+ * THE ALPHAS WERE NOT RAISED, and that is the point. They are the contrast
+ * ceiling; everything above is either a timing change or a change that can
+ * only ever make the field DIMMER than its verified peak, so none of it can
+ * move the number that binds. Re-measured after the change by rendering the
+ * real layers with all four forced to full opacity — a state strictly worse
+ * than anything the animation reaches — and sampling every pixel against
+ * `--text-muted`: night 5.24:1, day 5.20:1. The scale amplitudes grew too
+ * (src/index.css), which is why day moved at all: a wider field puts slightly
+ * more of its own brightest region on screen. Still 0.7 clear of the floor.
+ * ---------------------------------------------------------------------------
  *
  * Cost: transform and opacity only, on four composited layers, no per-frame
  * JS, nothing that can affect layout. `contain: strict` keeps the blur out
@@ -88,8 +117,30 @@ interface Layer {
   keyframes: string;
   /** Which `--dur-orb-*` and `--dur-aura-breath-*` drive it. */
   duration: string;
-  /** Negative offset into the breath, so the four layers never swell
-   * together and read as one pulsing object. */
+  /**
+   * Negative offset into the breath — where in its cycle the layer starts.
+   *
+   * THESE USED TO SCATTER THE LAYERS AND NOW ALIGN THEM, which is a reversal
+   * and needs saying. The old values (-3s/-5s/-17s/-11s against 13/17/23/19s
+   * periods) put the four layers at phases 0.23/0.29/0.74/0.58 — deliberately
+   * spread, so they "never swell together and read as one pulsing object".
+   * The cost of that was the thing it was protecting against: with one layer
+   * dimming while another brightened, the total light in the field stayed
+   * roughly constant, so the composite had no breath left to see. Scatter is
+   * why a change that measures present reads as absent.
+   *
+   * All four now start at ~0.24 of their own cycle: nearly in phase, a quarter
+   * of the way up the inhale, so the aura is already rising when the app opens
+   * rather than sitting at its dimmest. Because the four periods still differ,
+   * they drift apart over the following minutes and reconverge — so the field
+   * breathes as one body at first and picks up its layered quality later,
+   * instead of never having one.
+   *
+   * Note this cannot change the worst-case contrast: the periods have always
+   * been mutually non-multiple, so every relative phase — including all four
+   * at peak together — was already reachable. Aligning them changes how OFTEN
+   * that state occurs, never how bright it is.
+   */
   breathDelay: string;
 }
 
@@ -103,7 +154,7 @@ const LAYERS: Layer[] = [
     blur: '40px',
     keyframes: 'orb-field',
     duration: 'field',
-    breathDelay: '-11s',
+    breathDelay: '-2.4s', // 0.240 of its 10s cycle
   },
   {
     size: 114,
@@ -113,7 +164,7 @@ const LAYERS: Layer[] = [
     blur: '26px',
     keyframes: 'orb-ring-2',
     duration: 'ring-2',
-    breathDelay: '-17s',
+    breathDelay: '-3.2s', // 0.246 of its 13s cycle
   },
   {
     size: 86,
@@ -123,7 +174,7 @@ const LAYERS: Layer[] = [
     blur: '20px',
     keyframes: 'orb-ring-1',
     duration: 'ring-1',
-    breathDelay: '-5s',
+    breathDelay: '-2.7s', // 0.245 of its 11s cycle
   },
   {
     size: 62,
@@ -133,16 +184,18 @@ const LAYERS: Layer[] = [
     blur: '24px',
     keyframes: 'orb-core',
     duration: 'core',
-    breathDelay: '-3s',
+    breathDelay: '-2.2s', // 0.244 of its 9s cycle
   },
 ];
 
 /** The rest transform every layer holds at, matching its keyframes' 0% stop
- * so the animated and held-static cases agree. Ring 2 rests at scale(1.03)
- * because its track does. */
+ * so the animated and held-static cases agree. Ring 2 rests at scale(1.06)
+ * because its track does — if that keyframe's amplitude changes, THIS CHANGES
+ * WITH IT, or the reduced-motion render silently differs from the animated
+ * one's starting frame. */
 function restTransform(layer: Layer): string {
   return layer.keyframes === 'orb-ring-2'
-    ? 'translate(-50%, -50%) scale(1.03)'
+    ? 'translate(-50%, -50%) scale(1.06)'
     : 'translate(-50%, -50%)';
 }
 
