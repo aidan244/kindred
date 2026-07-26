@@ -9,7 +9,7 @@
  * Send buttons. The only thing that varies is which optional side action is
  * present:
  *
- *   - 03 passes `leftActionLabel` ("Back to the options"), the way back to the
+ *   - 03 passes `leftActionLabel` ("Back"), the way back to the
  *     chip row this composer replaced. Chips and composer are mutually
  *     exclusive (README, "Interactions & Behaviour" — `moreOpen`), so there
  *     has to be a way back that is not the browser's back button.
@@ -53,7 +53,7 @@ export interface ComposerProps {
   onChange: (value: string) => void;
   voiceNote: VoiceNote | null;
   onVoiceNoteChange: (note: VoiceNote | null) => void;
-  /** Screen 03 only: "Back to the options". Renders next to the mic. */
+  /** Screen 03 only: "Back", the way out of the composer. Next to the mic. */
   leftActionLabel?: string;
   onLeftAction?: () => void;
   /** Screen 05's optional beat: "Skip this". */
@@ -162,7 +162,7 @@ export function Composer({
       {/*
         The action row, 16px below the field. The README draws it as
         space-between; it is built as "left group, then right group with
-        ml-auto" so that at 200% text — where the mic, "Back to the options",
+        ml-auto" so that at 200% text — where the mic, "Back",
         "Skip this" and "Send" cannot share a line at any width — the groups
         wrap and each stays on its own side instead of overlapping. Same
         picture when it fits, no clipping when it does not.

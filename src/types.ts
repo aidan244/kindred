@@ -190,12 +190,15 @@ export interface TriageContact {
   label: string;
   number: string;
   reason: string;
-  /** Which kind of contact this is, so callers can render an accurate
-   * label instead of assuming: "Call the clinic" / "Call the unit" for
-   * `getTriageContact()`'s two results, or "Call 999" for the emergency-tier
-   * pseudo-contact a screen builds itself (src/screens/Outcome.tsx) — never
-   * returned by getTriageContact(), which never resolves to 999 (see that
-   * function's header comment). */
+  /**
+   * Which kind of contact this is.
+   *
+   * NOTHING DIALS THIS ANY MORE. Every call control in the product is "Call
+   * paramedics" on 999; `getTriageContact()` survives only to NAME a clinic
+   * in the report's "sent to" line and to set expectations about when it will
+   * be read. Kept as a field because those two uses still want to know which
+   * of the two it resolved to.
+   */
   kind: 'clinic' | 'unit' | 'emergency';
 }
 
