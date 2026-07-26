@@ -113,14 +113,23 @@
  * blooms are anchored with, so the animated and the held-static (reduced
  * motion) cases agree on the same rest position — the same law the old wash
  * followed. Transform and opacity only: nothing here can affect layout.
- * ------------------------------------------------------------------------ */
+ *
+ * TRAVEL IS 1.8x THE README'S, ON REQUEST — see the note on --dur-aura-*
+ * in tokens.css. Every rest stop (0%/100%) is untouched, so the composition
+ * at rest, and the position reduced motion holds the blooms at, are both
+ * exactly what the README specifies. Only the 50% stops travel further:
+ * each one's offset FROM ITS OWN REST STOP is multiplied by 1.8, translate
+ * and scale alike, which keeps the shape of every path and only lengthens
+ * it. Worked in the comment above each so the arithmetic is checkable.
+ */
 @keyframes aura-a {
   0%,
   100% {
     transform: translate(-50%, -50%);
   }
+  /* README: (-54%,-58%) scale(1.16) — offsets (-4,-8) and +0.16, x1.8. */
   50% {
-    transform: translate(-54%, -58%) scale(1.16);
+    transform: translate(-57.2%, -64.4%) scale(1.288);
   }
 }
 
@@ -129,8 +138,9 @@
   100% {
     transform: translate(-50%, -50%) scale(1.04);
   }
+  /* README: (-44%,-42%) scale(1.2) — offsets (+6,+8) and +0.16, x1.8. */
   50% {
-    transform: translate(-44%, -42%) scale(1.2);
+    transform: translate(-39.2%, -35.6%) scale(1.328);
   }
 }
 
@@ -139,8 +149,9 @@
   100% {
     transform: translate(-50%, -50%);
   }
+  /* README: (-58%,-46%) scale(1.24) — offsets (-8,+4) and +0.24, x1.8. */
   50% {
-    transform: translate(-58%, -46%) scale(1.24);
+    transform: translate(-64.4%, -42.8%) scale(1.432);
   }
 }
 
@@ -149,8 +160,34 @@
   100% {
     transform: translate(-50%, -50%) scale(1.06);
   }
+  /* README: (-46%,-56%) scale(0.92) — offsets (+4,-6) and -0.14, x1.8.
+   * This is the one track that shrinks rather than grows at mid-cycle. */
   50% {
-    transform: translate(-46%, -56%) scale(0.92);
+    transform: translate(-42.8%, -60.8%) scale(0.808);
+  }
+}
+
+/*
+ * The brightness breath, running alongside the drift on its own period.
+ *
+ * Translation alone does not read as breathing — a blurred form sliding
+ * behind content is just a form sliding. What the eye reads as breath is
+ * light swelling and settling, which is this.
+ *
+ * Peak is opacity 1, i.e. the bloom's designed alpha from tokens.css: the
+ * breath only ever dims. That is deliberate and load-bearing, not caution —
+ * those alphas are the contrast-verified ceiling (night's blooms 1 and 4
+ * put metadata text at 4.52:1 where they overlap, with no headroom at all),
+ * so a breath that brightened past them would break the contrast floor
+ * twice a minute in the state she is most likely to open the app in.
+ */
+@keyframes aura-breath {
+  0%,
+  100% {
+    opacity: var(--aura-breath-trough);
+  }
+  50% {
+    opacity: 1;
   }
 }
 

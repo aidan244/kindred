@@ -130,14 +130,43 @@
   /* The silent pause between conversational messages (§14.5). */
   --dur-beat: 700ms;
 
-  /* Aura drift periods — handoff README "The aura backdrop". Five blooms,
-   * five periods, none a multiple of another, so the composite never
-   * visibly loops. Same law as the old wash's 53/67/89. */
-  --dur-aura-1: 46s;
-  --dur-aura-2: 61s;
-  --dur-aura-3: 74s;
-  --dur-aura-4: 67s;
-  --dur-aura-5: 53s;
+  /* Aura drift periods.
+   *
+   * DELIBERATE DEPARTURE FROM THE HANDOFF README, ON REQUEST. The README
+   * tabulates 46/61/74/67/53s. At those periods a half-cycle runs 23-37
+   * seconds, which under 34-58px of blur is below the threshold at which a
+   * person perceives motion at all — the backdrop is genuinely drifting and
+   * reads as a still image. The brief asked for a backdrop that visibly
+   * breathes, so the periods are ~2.5x faster here and the keyframe travel
+   * is 1.8x further (src/index.css). Everything else about the composition —
+   * the five blooms, their sizes, positions, fills, blurs and easing — is
+   * still the README's table verbatim.
+   *
+   * Still pairwise non-multiple, so the composite never visibly loops. */
+  --dur-aura-1: 18s;
+  --dur-aura-2: 24s;
+  --dur-aura-3: 30s;
+  --dur-aura-4: 26s;
+  --dur-aura-5: 21s;
+
+  /* Aura breath periods — the brightness pulse that runs alongside the
+   * drift. Deliberately NOT the drift periods: two loops of different length
+   * on the same element is what stops the aura reading as one mechanical
+   * cycle. Each is coprime-ish with its own bloom's drift period, so a bloom
+   * is rarely at the same point of both loops twice. */
+  --dur-aura-breath-1: 13s;
+  --dur-aura-breath-2: 17s;
+  --dur-aura-breath-3: 23s;
+  --dur-aura-breath-4: 19s;
+  --dur-aura-breath-5: 15s;
+
+  /* How far down from its designed alpha a bloom dims at the bottom of its
+   * breath. The breath only ever REDUCES a bloom's presence — the designed
+   * alpha in the theme blocks below is the contrast-verified ceiling and is
+   * never exceeded, so this can never push body text under 4.5:1. Trough to
+   * peak is a ~43% swing in light, which is what makes it legible as
+   * breathing rather than as flicker. */
+  --aura-breath-trough: 0.7;
 
   /* Route transition — handoff README "page_transitions". One visual
    * language for the whole app: opacity plus a short directional slide. */
