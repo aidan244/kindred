@@ -23,7 +23,7 @@
  * literal reading anywhere in this file. The big number is the newest SETTLED
  * sample of the live window, i.e. the last reading the band has actually
  * confirmed, never a value taken from the still-arriving edge; the trace draws
- * the same window, greying that edge itself (see HeartRateTrace). Both are
+ * the same window, greying that edge itself (see KickTrace). Both are
  * kept current by one modest poll, not by per-frame work.
  *
  * WHAT THIS SCREEN NEVER DOES. It shows the shape of the signal and stops: no
@@ -44,7 +44,7 @@ import { CaretLeft } from '@phosphor-icons/react';
 import { BandMark } from '../components/BandMark';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
-import { HeartRateTrace } from '../components/HeartRateTrace';
+import { KickTrace } from '../components/KickTrace';
 import { SessionRing } from '../components/SessionRing';
 import { useAppState } from '../context/AppStateContext';
 import {
@@ -52,20 +52,18 @@ import {
   LIVE_VIEW_TITLE,
   LIVE_VIEW_TRACE_START_LABEL,
   LIVE_VIEW_UNIT_CAPTION,
-  TRACE_NOW_LABEL,
+  TRACE_HOUR_NOW_LABEL,
   bandOfflineCopy,
   liveViewSessionCaption,
 } from '../data/clinicalContent';
 import { getMovementStream } from '../sensors/MovementStream';
 import { formatClock } from './reportAssembly';
-import type { HeartRateWindow } from '../types';
+import type { KickWindow } from '../types';
 
 /** The window the README's live trace covers, and the resolution it is
- * sampled at: "2 minutes ago" → "now", one sample a second. Both are stated
+ * sampled at: "12 hours ago" → "now", one tally an hour. Both are stated
  * here rather than inside the poll so the micro labels below the trace and
  * the data behind it can never drift apart. */
-const LIVE_SPAN_MINUTES = 2;
-const LIVE_STEP_SECONDS = 1;
 
 /**
  * How often the live window is re-read. One second, because that is exactly
@@ -129,8 +127,8 @@ export default function LiveView(): ReactElement {
   // filled in by an effect: an effect runs after paint, so the screen would
   // show one frame of the no-signal state before the data arrived — a false
   // statement about the hardware, however briefly.
-  const [liveWindow, setLiveWindow] = useState<HeartRateWindow>(() =>
-    getMovementStream(activityVariant).getLiveHeartRateWindow(LIVE_SPAN_MINUTES, LIVE_STEP_SECONDS)
+  const [liveWindow, setLiveWindow] = useState<KickWindow>(() =>
+    getMovementStream(activityVariant).getHourlyKickWindow()
   );
 
   // The session is the one she opened by arriving here; RouteTransition keys
@@ -175,7 +173,7 @@ export default function LiveView(): ReactElement {
     }
     const source = getMovementStream(activityVariant);
     const read = (): void => {
-      setLiveWindow(source.getLiveHeartRateWindow(LIVE_SPAN_MINUTES, LIVE_STEP_SECONDS));
+      setLiveWindow(source.getHourlyKickWindow());
     };
     read();
     const interval = window.setInterval(read, LIVE_POLL_INTERVAL_MS);
@@ -198,9 +196,9 @@ export default function LiveView(): ReactElement {
   }, [paused]);
 
   // Pausing stops the session clock and the ring, and DELIBERATELY does not
-  // stop the poll above. A frozen trace under labels reading "2 minutes ago"
+  // stop the poll above. A frozen trace under labels reading "12 hours ago"
   // and "now", with a big number above it, would be a claim about the baby's
-  // heart rate right now that the screen could not stand behind. The band
+  // count right now that the screen could not stand behind. The band
   // does not pause; only her session does.
   const handleTogglePause = (): void => setPaused((current) => !current);
 
@@ -239,7 +237,7 @@ export default function LiveView(): ReactElement {
         {listening ? (
           <>
             {/* The number and its unit are one paragraph, not two siblings, so
-                a screen reader reads "142 bpm · baby's heart rate" as the one
+                a screen reader reads the number and its unit as one
                 statement it is. It is not a live region: the reading changes
                 every second, and announcing it every second would be
                 unusable. */}
@@ -249,19 +247,19 @@ export default function LiveView(): ReactElement {
                   must wrap rather than be clipped or push the page sideways.
                   Nothing here has a fixed height. */}
               <span className="text-text break-words" style={BPM_NUMERIC_TYPE}>
-                {settledSample.bpm}
+                {settledSample.kicks}
               </span>
               <span className="text-caption text-text-muted">{LIVE_VIEW_UNIT_CAPTION}</span>
             </p>
 
             {/* Geometry, gradient, the greyed incoming edge and the live dot
-                are all HeartRateTrace's; this screen only says which window
+                are all KickTrace's; this screen only says which window
                 and which variant. */}
-            <HeartRateTrace window={liveWindow} variant="live" className="mt-6 block" />
+            <KickTrace window={liveWindow} variant="live" className="mt-6 block" />
 
             <div className="mt-2 flex items-start justify-between gap-4">
               <span className="text-micro text-text-muted">{LIVE_VIEW_TRACE_START_LABEL}</span>
-              <span className="text-micro text-text-muted">{TRACE_NOW_LABEL}</span>
+              <span className="text-micro text-text-muted">{TRACE_HOUR_NOW_LABEL}</span>
             </div>
 
             {/* 28px above the ring, per the README's own rhythm. SessionRing

@@ -15,11 +15,11 @@
  * let them drift apart. The card owns the span/step and reads the sensor
  * boundary directly.
  *
- * WHY IT DOES NOT TICK. `getHeartRateWindow` is described at the boundary as
+ * WHY IT DOES NOT TICK. `getDailyKickWindow` is described at the boundary as
  * "a record of the day, not a live edge", and it snaps to its own step grid,
  * so re-reading it every few seconds would return an identical window and
  * repaint for nothing. It is read once per mount, and again if the variant or
- * the band's signal changes. The place where a heart rate updates in front of
+ * the band's signal changes. The place where the count updates in front of
  * her is the live view, which she opens on purpose.
  *
  * `showNumber` hides the number row ALONE (screen 02, where the alert block is
@@ -35,13 +35,13 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { ArrowUpRight } from '@phosphor-icons/react';
 import { BandMark } from './BandMark';
-import { HeartRateTrace } from './HeartRateTrace';
+import { KickTrace } from './KickTrace';
 import { useAppState } from '../context/AppStateContext';
 import {
   BAND_OFFLINE_NO_CLOCK,
   bandOfflineCopy,
-  HOME_BPM_UNIT,
-  HOME_HEART_RATE_LABEL,
+  HOME_KICKS_UNIT,
+  HOME_KICKS_LABEL,
   HOME_OPEN_LIVE_VIEW,
   HOME_TRACE_START_LABEL,
   TRACE_NOW_LABEL,
@@ -60,8 +60,6 @@ export interface LiveDataCardProps {
  * resolution is the one src/data/seedHeartRate.ts's header names for this
  * screen, and it is what keeps Home and the live view looking at the same
  * underlying signal at two different scales. */
-const HOME_SPAN_MINUTES = 24 * 60;
-const HOME_STEP_SECONDS = 600;
 
 /* Two band-offline sentences, both in src/data/clinicalContent.ts:
  * `bandOfflineCopy()` names the clock of the last sample the band sent, which
@@ -77,13 +75,13 @@ export function LiveDataCard({ showNumber, onOpenLiveView }: LiveDataCardProps):
   // sensor boundary owns whether the band is reporting, and app state mirrors
   // it (see AppStateContext's setBandOffline). Listing it here is what makes
   // the card re-read the boundary the moment the band goes quiet or returns.
-  const heartRateWindow = useMemo(
+  const kickWindow = useMemo(
     () =>
-      getMovementStream(activityVariant).getHeartRateWindow(HOME_SPAN_MINUTES, HOME_STEP_SECONDS),
+      getMovementStream(activityVariant).getDailyKickWindow(),
     [activityVariant, bandOffline]
   );
 
-  const samples = heartRateWindow.samples;
+  const samples = kickWindow.samples;
   const latest = samples.length > 0 ? samples[samples.length - 1] : null;
 
   // The last instant the band actually reported. An offline band returns an
@@ -123,21 +121,21 @@ export function LiveDataCard({ showNumber, onOpenLiveView }: LiveDataCardProps):
                     numeral at this size can outgrow the column, and it must
                     wrap rather than be clipped. */}
                 <span className="text-[3.5rem] leading-none font-light tracking-[-0.03em] break-words text-text">
-                  {latest.bpm}
+                  {latest.kicks}
                 </span>
-                <span className="text-caption text-text-muted">{HOME_BPM_UNIT}</span>
+                <span className="text-caption text-text-muted">{HOME_KICKS_UNIT}</span>
               </div>
-              <span className="text-caption text-text-muted">{HOME_HEART_RATE_LABEL}</span>
+              <span className="text-caption text-text-muted">{HOME_KICKS_LABEL}</span>
             </div>
           )}
 
-          {/* Geometry, gradient and the live dot are all HeartRateTrace's. */}
-          <HeartRateTrace window={heartRateWindow} variant="card" className="block" />
+          {/* Geometry, gradient and the live dot are all KickTrace's. */}
+          <KickTrace window={kickWindow} variant="card" className="block" />
 
           {/* The two ends of the window — the only place the micro role is
               used (handoff README, "Typography"). They live INSIDE this
               branch: an x axis spanning 24 hours with nothing plotted on it is
-              the labelled empty frame HeartRateTrace refuses to draw ("not a
+              the labelled empty frame KickTrace refuses to draw ("not a
               flat line at zero, not an empty frame with labels"), and it
               would quietly imply a window that was measured and came back
               flat. They label the data; when the data goes, they go. */}

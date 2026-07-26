@@ -631,10 +631,14 @@ export function homeSyncedAgo(latest: Date | null, nowMs: number): string {
 
 /** 01 — the live-data card. */
 export const HOME_WINDOW_LABEL = 'Last 24 hours';
-export const HOME_HEART_RATE_LABEL = "Baby's heart rate";
-export const HOME_BPM_UNIT = 'bpm';
-export const HOME_TRACE_START_LABEL = '24 hours ago';
-export const TRACE_NOW_LABEL = 'now';
+export const HOME_KICKS_LABEL = "Baby's kicks";
+/** The unit beside Home's big number: kicks counted TODAY so far. */
+export const HOME_KICKS_UNIT = 'kicks today';
+export const HOME_TRACE_START_LABEL = '7 days ago';
+export const TRACE_NOW_LABEL = 'today';
+
+/** The live view counts by the hour, so its trailing label is 'now'. */
+export const TRACE_HOUR_NOW_LABEL = 'now';
 export const HOME_OPEN_LIVE_VIEW = 'Open live view';
 
 /** 01 — the band-offline variant. A statement about the hardware, never
@@ -660,12 +664,15 @@ export const BAND_OFFLINE_NO_CLOCK = 'No signal from the band. Check the band is
  * ("steady", "normal", "reassuring"): those are verdicts, and this product
  * does not have one.
  */
-export function heartRateTraceCardSummary(bpm: number): string {
-  return `Your baby's heart rate over the last 24 hours. Latest reading ${bpm} beats per minute.`;
+export function kickTraceCardSummary(kicks: number): string {
+  // Announces the last COMPLETE day, which is the sample the dot marks —
+  // never today's running total, because a partial day is always lower and
+  // reading it aloud as the current figure would imply a fall every morning.
+  return `Your baby's kicks, by day, over the last week. ${kicks} kicks on the last full day.`;
 }
 
-export function heartRateTraceLiveSummary(bpm: number): string {
-  return `Your baby's heart rate, listening now. Latest reading ${bpm} beats per minute.`;
+export function kickTraceLiveSummary(kicks: number): string {
+  return `Your baby's kicks, by hour. ${kicks} kicks in the last full hour.`;
 }
 
 /** 03 — the third chip on a gate question: a way to answer in her own words
@@ -860,8 +867,8 @@ export function triageContactReason(
 
 /** 08 — live view. */
 export const LIVE_VIEW_TITLE = 'Live view';
-export const LIVE_VIEW_UNIT_CAPTION = "bpm · baby's heart rate";
-export const LIVE_VIEW_TRACE_START_LABEL = '2 minutes ago';
+export const LIVE_VIEW_UNIT_CAPTION = "kicks in the last full hour";
+export const LIVE_VIEW_TRACE_START_LABEL = '12 hours ago';
 
 export function liveViewSessionCaption(sinceClock: string): string {
   return `Listening since ${sinceClock}. The band is connected.`;

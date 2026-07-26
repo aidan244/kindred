@@ -363,8 +363,8 @@ const ACTIVITY_NO_DATA =
  * unconditionally, so an empty `recentActivity` printed "0 movements recorded
  * across 0 samples" followed by 24 rows of "moved in 0 of 0 samples". That is
  * a confirmed twenty-four hours of zero fetal movement, manufactured out of no
- * data — the precise claim src/components/HeartRateTrace.tsx refuses to draw
- * on screen ("a flat line is a claim that the heart rate was flat"), made in
+ * data — the precise claim src/components/KickTrace.tsx refuses to draw
+ * on screen ("a flat line is a claim that nothing happened"), made in
  * the document that goes to her clinic.
  *
  * Two rules now:

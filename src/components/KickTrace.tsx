@@ -1,5 +1,5 @@
 /**
- * HeartRateTrace — the one heart-rate drawing in the product (handoff README,
+ * KickTrace — the one data drawing in the product (handoff README,
  * screen 01's live-data card and screen 08's live view). One polyline, no
  * fill, stroked with a horizontal gradient that runs from nearly-invisible at
  * the old end to full accent at "now", and a single dot marking the live
@@ -12,7 +12,7 @@
  *    reported and stops (handoff README, invariants).
  *  - Nothing at all when the window is empty. `null`, not a flat line at
  *    zero, not an empty frame with labels. A flat line is a claim that the
- *    heart rate was flat. Absence is absence.
+ *    anything was counted. Absence is absence.
  *  - No colour that means anything. There is one accent ramp and, on the live
  *    variant, one muted grey for the part the band has not confirmed yet. Red
  *    exists in EmergencyCall alone and never appears here, no matter what the
@@ -27,7 +27,7 @@
  *    and is 354 wide, so both ends keep 6 units of margin — enough that the
  *    live dot (r 3.6 at most) is never clipped by the edge.
  *  - Y: the window's OWN min/max, padded by a little headroom, mapped onto a
- *    plot band inset from the viewBox by the same 6 units. A fixed bpm axis
+ *    plot band inset from the viewBox by the same 6 units. A fixed kicks axis
  *    was rejected deliberately: it would make ordinary variation read as a
  *    flat line most days and as a cliff on the day it moves, which is a
  *    judgement about the data dressed up as a scale.
@@ -39,21 +39,21 @@
 
 import { useId, type ReactElement } from 'react';
 import {
-  heartRateTraceCardSummary,
-  heartRateTraceLiveSummary,
+  kickTraceCardSummary,
+  kickTraceLiveSummary,
 } from '../data/clinicalContent';
-import type { HeartRateSample, HeartRateWindow } from '../types';
+import type { KickSample, KickWindow } from '../types';
 
-export interface HeartRateTraceProps {
+export interface KickTraceProps {
   /** From the sensor boundary. An empty `samples` array renders nothing. */
-  window: HeartRateWindow;
+  window: KickWindow;
   variant: 'card' | 'live';
   className?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Screen-reader copy lives in src/data/clinicalContent.ts
-// (`heartRateTraceCardSummary` / `heartRateTraceLiveSummary`), like every
+// (`kickTraceCardSummary` / `kickTraceLiveSummary`), like every
 // other patient-facing sentence.
 //
 // IT ANNOUNCES THE NUMBER ON SCREEN, not a statistic. The label used to state
@@ -78,7 +78,7 @@ const PLOT_X_END = 342;
 
 /**
  * How much of the plot band is left empty above and below the data, as a
- * fraction of the window's own bpm span. Without it the highest and lowest
+ * fraction of the window's own kicks span. Without it the highest and lowest
  * samples of every window would touch the band's edges, which reads as the
  * trace having hit a limit.
  */
@@ -93,15 +93,15 @@ interface TraceGeometry {
   viewBox: string;
   /** Rendered height in px; width is always 100% of the container. */
   height: number;
-  /** Smaller y — where the highest bpm in the window lands. */
+  /** Smaller y — where the highest kicks in the window lands. */
   bandTop: number;
-  /** Larger y — where the lowest bpm lands. */
+  /** Larger y — where the lowest kicks lands. */
   bandBottom: number;
   /** Radius of the dot marking the live edge. */
   dotRadius: number;
 }
 
-const GEOMETRY: Record<HeartRateTraceProps['variant'], TraceGeometry> = {
+const GEOMETRY: Record<KickTraceProps['variant'], TraceGeometry> = {
   // viewBox y runs 8 -> 108; the band is that, inset top and bottom.
   card: {
     viewBox: '-6 8 354 100',
@@ -204,29 +204,34 @@ function round2(value: number): number {
 }
 
 /**
- * Maps bpm onto the plot band using the window's own min and max, padded by
- * `HEADROOM_FRACTION`. A window whose samples are all identical has no span to
- * scale across, so it is drawn on the band's centre line — the one case where
- * a horizontal line is honest, because the data really is one value.
+ * Maps a kick count onto the plot band.
+ *
+ * THE AXIS STARTS AT ZERO, and that is the difference between an honest chart
+ * and a misleading one here. This function used to scale to the window's own
+ * min and max, which is right for a heart rate — 138 to 146 bpm is a real
+ * band and nobody imagines the axis reaching 0. A COUNT is not like that.
+ * Zooming 284..333 kicks onto the full plot height turns a 15% spread into a
+ * line that swings from floor to ceiling, and someone looking at her own
+ * baby's chart would read a catastrophe in ordinary variation.
+ *
+ * So: zero at the bottom, the window's max plus headroom at the top. Flat
+ * data draws a flat line low on the band, which is what flat data is.
  */
-function makeBpmToY(samples: HeartRateSample[], geometry: TraceGeometry): (bpm: number) => number {
+function makeKicksToY(samples: KickSample[], geometry: TraceGeometry): (kicks: number) => number {
   const { bandTop, bandBottom } = geometry;
-  let min = samples[0].bpm;
-  let max = samples[0].bpm;
+  let max = samples[0].kicks;
   for (const sample of samples) {
-    if (sample.bpm < min) min = sample.bpm;
-    if (sample.bpm > max) max = sample.bpm;
+    if (sample.kicks > max) max = sample.kicks;
   }
 
-  const headroom = (max - min) * HEADROOM_FRACTION;
-  const low = min - headroom;
-  const high = max + headroom;
-  const centre = (bandTop + bandBottom) / 2;
+  const high = max * (1 + HEADROOM_FRACTION);
 
-  if (high <= low) {
-    return () => centre;
+  // An all-zero window has no height to scale across. Draw it on the floor:
+  // the count really is zero, and the floor is where zero belongs.
+  if (high <= 0) {
+    return () => bandBottom;
   }
-  return (bpm: number) => bandBottom - ((bpm - low) / (high - low)) * (bandBottom - bandTop);
+  return (kicks: number) => bandBottom - (kicks / high) * (bandBottom - bandTop);
 }
 
 /** Even spacing across the plot width. A single-sample window is placed at the
@@ -238,15 +243,15 @@ function sampleX(index: number, count: number): number {
   return PLOT_X_START + (index / (count - 1)) * (PLOT_X_END - PLOT_X_START);
 }
 
-export function HeartRateTrace({
-  window: heartRateWindow,
+export function KickTrace({
+  window: kickWindow,
   variant,
   className,
-}: HeartRateTraceProps): ReactElement | null {
+}: KickTraceProps): ReactElement | null {
   // Called before the early return: hooks may not sit behind a condition.
   const rawId = useId();
 
-  const { samples, settledIndex } = heartRateWindow;
+  const { samples, settledIndex } = kickWindow;
 
   // Absence is absence. No frame, no labels, no flat line (handoff README,
   // invariants) — the caller renders its own no-signal state instead.
@@ -260,10 +265,10 @@ export function HeartRateTrace({
 
   const geometry = GEOMETRY[variant];
   const count = samples.length;
-  const bpmToY = makeBpmToY(samples, geometry);
+  const kicksToY = makeKicksToY(samples, geometry);
 
   const points = samples
-    .map((sample, index) => `${round2(sampleX(index, count))},${round2(bpmToY(sample.bpm))}`)
+    .map((sample, index) => `${round2(sampleX(index, count))},${round2(kicksToY(sample.kicks))}`)
     .join(' ');
 
   // The card's dot marks the last sample (everything Home shows has settled);
@@ -272,14 +277,14 @@ export function HeartRateTrace({
   const dotIndex =
     variant === 'card' ? count - 1 : clamp(settledIndex, 0, count - 1);
   const dotX = sampleX(dotIndex, count);
-  const dotY = bpmToY(samples[dotIndex].bpm);
+  const dotY = kicksToY(samples[dotIndex].kicks);
 
   const switchOffset = count < 2 ? 1 : dotIndex / (count - 1);
   const stops = variant === 'card' ? CARD_STOPS : liveStops(switchOffset);
 
   // The number the caller is printing beside this trace, and therefore the
   // number the accessible label states — see the note at the top of this file.
-  const dotBpm = Math.round(samples[dotIndex].bpm);
+  const dotKicks = Math.round(samples[dotIndex].kicks);
 
   return (
     <svg
@@ -289,8 +294,8 @@ export function HeartRateTrace({
       role="img"
       aria-label={
         variant === 'card'
-          ? heartRateTraceCardSummary(dotBpm)
-          : heartRateTraceLiveSummary(dotBpm)
+          ? kickTraceCardSummary(dotKicks)
+          : kickTraceLiveSummary(dotKicks)
       }
       className={className}
     >

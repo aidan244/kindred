@@ -191,8 +191,8 @@ describe('invariant 9 — patient-facing copy obeys the voice rules', () => {
     content.homeSyncedAgo(new Date(Date.now() - 4 * 60000), Date.now()),
     content.homeSyncedAgo(new Date(Date.now() - 3 * 3600000), Date.now()),
     content.bandOfflineCopy('06:20'),
-    content.heartRateTraceCardSummary(142),
-    content.heartRateTraceLiveSummary(142),
+    content.kickTraceCardSummary(142),
+    content.kickTraceLiveSummary(142),
     content.liveViewSessionCaption('09:14')
   );
 

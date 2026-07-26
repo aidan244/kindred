@@ -153,32 +153,32 @@ export interface ActivitySample {
 }
 
 /**
- * One fetal heart-rate reading from the band (handoff README, screens 01 and
- * 08 — "HeartRateTrace"). The band reports movement and heart rate over the
- * same link, so both live behind the one sensor boundary
- * (src/sensors/MovementStream.ts).
+ * One interval's kick tally from the band (screens 01 and 08 — KickTrace).
+ * The band reports movement and kicks over the same link, so both live
+ * behind the one sensor boundary (src/sensors/MovementStream.ts).
  *
- * `bpm` is whole beats per minute as the band reports it. There is no
+ * `kicks` is a COUNT OVER AN INTERVAL, not a value at an instant, and
+ * `timestamp` is the START of that interval. There is no
  * "quality" or "confidence" field and no interpretation of any kind: the app
  * draws the shape of this and stops. A window with no samples renders
  * nothing at all — absence is absence (handoff README, invariants).
  */
-export interface HeartRateSample {
+export interface KickSample {
   timestamp: Date;
-  bpm: number;
+  kicks: number;
 }
 
 /**
- * A window of heart-rate samples, plus where the band's own settling ends.
+ * A window of kick tallies, plus where the completed intervals end.
  *
  * `settledIndex` is the last sample the band has confirmed; anything after
  * it is still arriving and is drawn as the greyed incoming edge on the live
  * view (handoff README, screen 08 — the gradient's hard switch at 62%, with
  * the live-sample dot at the switch point). On a settled window
- * (`getHeartRateWindow`) it is simply the last index.
+ * (`getKickWindow`) it is simply the last index.
  */
-export interface HeartRateWindow {
-  samples: HeartRateSample[];
+export interface KickWindow {
+  samples: KickSample[];
   settledIndex: number;
 }
 

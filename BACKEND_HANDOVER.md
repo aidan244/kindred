@@ -36,10 +36,13 @@ Every screen talks to the wearable through exactly one interface,
 `MovementStream` in `src/sensors/MovementStream.ts`. Replacing
 `MockMovementStream` with a real implementation of that interface is the whole
 frontend-facing task — **no other file should need to change.** That was true
-before the design handoff and is still true; the interface just grew a
-heart-rate channel. Everything else in `backend-connections.md` (report
-delivery, identity, clinic contact resolution, voice notes, content versioning)
-sits behind ordinary API calls and is unaffected by the UI work.
+before the design handoff and is still true; the interface just grew a kick
+channel. Everything else in `backend-connections.md` (report delivery,
+identity, voice notes, content versioning) sits behind ordinary API calls and
+is unaffected by the UI work.
+
+One exception worth reading before you start on §6: **clinic contact
+resolution is no longer a call route.** See 2.6.
 
 ---
 
@@ -57,72 +60,82 @@ interface MovementStream {
   getWindow(hours: number): ActivitySample[];
   getBaseline(): number;
 
-  // --- heart rate, new ---
-  getHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
-  getLiveHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
+  // --- kicks, new ---
+  getDailyKickWindow(): KickWindow;   // Home's card
+  getHourlyKickWindow(): KickWindow;  // the live view
   hasSignal(): boolean;
 }
 
-type ActivitySample   = { timestamp: Date; moved: boolean };
-type HeartRateSample  = { timestamp: Date; bpm: number };
-type HeartRateWindow  = { samples: HeartRateSample[]; settledIndex: number };
+type ActivitySample = { timestamp: Date; moved: boolean };
+type KickSample     = { timestamp: Date; kicks: number };  // timestamp = interval START
+type KickWindow     = { samples: KickSample[]; settledIndex: number };
 ```
 
-The band reports movement and heart rate over the same link, so this is
-deliberately one boundary rather than two. `getBaseline()` still means what §1
-says it means — read that paragraph, the exclusion of the most recent 24 hours
-is load-bearing and easy to reimplement wrongly.
+The band reports movement and kicks over the same link, so this is
+deliberately one boundary rather than two. `getBaseline()` still means what
+§1 says it means — read that paragraph, the exclusion of the most recent 24
+hours is load-bearing and easy to reimplement wrongly.
 
-**What the UI actually asks for.** Match these or the traces will look wrong:
+**Neither kick method takes a span or a resolution, and that is deliberate.**
+A kick count is a TALLY OVER AN INTERVAL, not a value at an instant, so "the
+same data at a different resolution" is not a thing that exists — a day and
+an hour are two different measurements, not two samplings of one signal. Home
+asks for days, the live view asks for hours, and the caller picks the
+question rather than parameterising one. Currently 7 daily buckets and 12
+hourly ones; if you need those counts to be configurable, change the
+signature rather than making the caller resample.
 
-| Caller | Call | Meaning |
-| --- | --- | --- |
-| `LiveDataCard` (Home) | `getHeartRateWindow(1440, 600)` | 24 hours at 10-minute resolution — 144 points. A settled record of the day. |
-| `LiveView` | `getLiveHeartRateWindow(2, 1)` | 2 minutes at 1-second resolution — 120 points, re-polled while the screen is open. |
+### 2.2 `settledIndex` marks the last COMPLETE interval
 
-### 2.2 `settledIndex` is a real property of your feed, not a display constant
+`KickWindow.settledIndex` is the index of the last **finished** bucket.
+Everything after it — in practice the final entry — is the interval still in
+progress, which the trace draws as a greyed incoming edge with the dot on the
+boundary.
 
-`HeartRateWindow.settledIndex` is the last sample the band has **confirmed**.
-Everything after it is still arriving, and the live view draws that tail greyed
-with the live-sample dot sitting on the boundary.
+This is not a display convention, it is arithmetic, and getting it wrong has
+a specific consequence: **the current bucket is always lower than its
+neighbours because it is unfinished.** A UI that drew it at full weight would
+show every patient a decline, every single day, forever. Both screens
+therefore print `samples[settledIndex]` as their headline number, never the
+last entry.
 
-The mock hard-codes `SETTLED_FRACTION = 0.62` because the design reference draws
-the switch at 62% of the trace width. **That number is a placeholder for a
-property of your ingest pipeline** — how far behind real-time your confirmed
-data actually runs. Return the honest index. If your feed confirms
-instantly, return `samples.length - 1` and the greyed tail correctly disappears;
-the UI handles that without changes.
+Return `samples.length - 2` when the final bucket is partial, and
+`samples.length - 1` when every bucket you return is complete.
 
-Do not reproduce 0.62 to make it look like the mock.
+(This replaces an earlier note about a `SETTLED_FRACTION` of 0.62, which was a
+heart-rate-era placeholder and no longer exists.)
 
 ### 2.3 An offline band must return nothing, everywhere
 
-`hasSignal()` is new, and **`getWindow()` is now gated on it too** — it returns
-`[]` when the band is silent, which it did not before.
+`hasSignal()` is new, and **`getWindow()` is now gated on it too** — it
+returns `[]` when the band is silent, which it did not before.
 
 This is a correctness fix, not tidiness. Home and the live view render their
-no-signal state from the heart-rate windows; `reportAssembly` pulls ~288
-movement samples from `getWindow()` for the same period and puts them in the
-report that rule 4e has **already sent to the clinic**. Before the gate, an
-offline band produced a screen saying "no signal" and a clinician-facing report
-full of confident movement data for the same hours.
+no-signal state from the kick windows; `reportAssembly` pulls ~288 movement
+samples from `getWindow()` for the same period and puts them in the report
+that rule 4e has **already sent to the clinic**. Before the gate, an offline
+band produced a screen saying "no signal" and a clinician-facing report full
+of confident movement data for the same hours.
 
-Your implementation must hold the same line: **no signal returns empty, in every
-method, and never a flat line at the baseline.** A flat line is a claim. This
-boundary does not make claims. `getBaseline()` is the one deliberate exception —
-it is a historical figure that an offline band says nothing about — and the
-reasoning is written at the method.
+Your implementation must hold the same line: **no signal returns empty, in
+every method, and never a flat line at a baseline.** A flat line is a claim.
+This boundary does not make claims. `getBaseline()` is the one deliberate
+exception — it is a historical figure that an offline band says nothing about
+— and the reasoning is written at the method.
 
 `setBandSignal()` is demo-only plumbing (`AppStateContext` mirrors the demo
-panel's `bandOffline` toggle into it). A real implementation derives signal from
-the link and should not export it.
+panel's `bandOffline` toggle into it). A real implementation derives signal
+from the link and should not export it.
 
-### 2.4 Delete the seed generator
+### 2.4 Delete the seed data
 
-`src/data/seedHeartRate.ts` is a deterministic stand-in — a continuous function
-of absolute time, written that way so Home's 10-minute sampling and the live
-view's 1-second sampling agree about the same instant. It has no clinical
-validity and is not a model of anything. It goes when you land.
+`src/data/seedKicks.ts` is two hardcoded tables — kicks per day and kicks per
+hour — chosen to look plausible on screen. No clinical validity, no
+thresholds, not a model of anything. It goes when you land.
+
+Note the shape it encodes, because your tables should match: the last entry of
+each is the current, in-progress interval, and is deliberately lower than its
+neighbours.
 
 ### 2.5 The live view's session is fake
 
@@ -133,17 +146,22 @@ server-side object (start, duration, state) or purely a client-side view of a
 continuous stream, and tell the frontend which — the ring and the clock both
 depend on the answer.
 
-### 2.6 A new phone number needs provisioning
+### 2.6 There is exactly one call route now, and it is not the clinic
 
-The operator route (`OPERATOR_NUMBER` in `src/data/clinicalContent.ts`,
-`0800 055 1122`) is new and appears on **every screen**, directly under the
-primary control. It is currently a placeholder `tel:` link.
+`backend-connections.md` §6 is about resolving WHICH number a patient sees —
+her private clinic in opening hours, the booked maternity unit outside them.
+**That resolution no longer drives any call control.** Every call affordance
+in the product is now "Call paramedics" on 999. Removed: the clinic/unit
+distinction, the quiet 999 fallback note, the routine outcome's "call your
+clinic" bar, and a separate operator line that briefly existed.
 
-`backend-connections.md` §10 says telephony needs no integration because
-`tel:` links dial natively. That still holds technically — but this number is a
-promise that a human answers. Provisioning it, staffing it, and defining what
-that operator can and cannot do is a real dependency, not a frontend detail.
-Raise it with whoever owns the service model before pilot.
+`getTriageContact()` still exists and §6's hours logic still runs — but only
+to NAME a clinic in the report's "sent to" line and to set expectations about
+when someone will read it. Nothing dials it.
+
+So §6 drops from a call-routing dependency to a display-name lookup. The
+escalation-tier thresholds in that same section still matter: they decide the
+outcome screen's framing, just not its number.
 
 ---
 
@@ -197,8 +215,10 @@ Carried from `backend-connections.md`, still unresolved, plus two new:
   received". A patient-visible honesty question, not plumbing.
 - **What is the clinic's practice-management system?** Determines whether report
   delivery is an API, a fax bridge, or a human inbox.
-- **(New) How far behind real-time is confirmed heart-rate data?** This is
-  `settledIndex` — see 2.2.
+- **(New) Are your kick tallies aligned to calendar days and clock hours,
+  or to rolling windows?** The UI labels them "7 days ago → today" and
+  "12 hours ago → now", which reads as calendar-aligned. If yours roll, the
+  labels are wrong rather than the data.
 - **(New) Is a listening session a server-side object?** See 2.5.
 - **The pre-eclampsia gap.** `clinicalContent.ts` documents that the six-category
   red-flag set has no headache / visual-disturbance / swelling category, which is

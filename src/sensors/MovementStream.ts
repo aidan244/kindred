@@ -11,15 +11,15 @@
  * whichever activity variant the demo panel currently has selected.
  */
 
-import type { ActivitySample, ActivityVariant, HeartRateWindow } from '../types';
+import type { ActivitySample, ActivityVariant, KickSample, KickWindow } from '../types';
 import { generateSeedActivity } from '../data/seedActivity';
-import { generateHeartRateWindow } from '../data/seedHeartRate';
+import { generateDailyKicks, generateHourlyKicks } from '../data/seedKicks';
 
 export interface MovementStream {
   /** Subscribes to a live sample stream. Returns an unsubscribe function. */
   subscribe(cb: (sample: ActivitySample) => void): () => void;
   /** Returns all samples within the last `hours`, oldest first. A band with
-   * no signal returns an EMPTY array, for the same reason the heart-rate
+   * no signal returns an EMPTY array, for the same reason the kick
    * windows do: this boundary reports what the band reported, and reports
    * nothing when it reported nothing. */
   getWindow(hours: number): ActivitySample[];
@@ -27,25 +27,26 @@ export interface MovementStream {
    * Deliberately NOT gated on the band's signal — see the implementation. */
   getBaseline(): number;
 
-  // -- Heart rate --------------------------------------------------------
-  // Added for the handoff README's HeartRateTrace (screens 01 and 08). The
-  // band reports movement and heart rate over the same link, so this is the
-  // same boundary, not a second one: swapping in real hardware means one new
-  // implementation of THIS interface, still with no other file changing.
-  // (design-plan.md §16.1's "do not add injection here" still holds — none
-  // of the methods below are injectable, and the demo panel drives them only
-  // by toggling `bandOffline` in app state.)
+  // -- Kicks -------------------------------------------------------------
+  // The band reports movement and kick counts over the same link, so this is
+  // the same boundary, not a second one: swapping in real hardware means one
+  // new implementation of THIS interface, still with no other file changing.
+  //
+  // NEITHER TAKES A SPAN OR A RESOLUTION. A kick count is a TALLY OVER AN
+  // INTERVAL, not a value at an instant, so "the same data at a different
+  // resolution" is not a thing that exists here — a day and an hour are two
+  // different measurements. The two windows are fixed and the caller picks
+  // which question it is asking rather than parameterising one.
+  // (design-plan.md §16.1's "do not add injection here" still holds — neither
+  // is injectable, and the demo panel drives them only via `bandOffline`.)
 
-  /** The settled 24h-scale trace behind Home's live-data card, oldest
-   * first. A band with no signal returns an empty window, and the card
-   * renders the no-signal block rather than a flat line — absence is
-   * absence (handoff README, invariants). */
-  getHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
+  /** Kicks per day, oldest first, for Home's card. A band with no signal
+   * returns an empty window and the card renders the no-signal block rather
+   * than a flat line — absence is absence (handoff README, invariants). */
+  getDailyKickWindow(): KickWindow;
 
-  /** The live-view window. Its trailing samples are still being confirmed
-   * by the band, which is what `HeartRateWindow.settledIndex` marks and
-   * what screen 08 draws as the greyed incoming edge. */
-  getLiveHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow;
+  /** Kicks per hour, oldest first, for the live view. */
+  getHourlyKickWindow(): KickWindow;
 
   /** Whether the band is currently reporting at all. */
   hasSignal(): boolean;
@@ -81,15 +82,6 @@ export function asInjectable(stream: MovementStream): InjectableMovementStream |
 
 const LIVE_EMIT_INTERVAL_MS = 4000;
 const BASELINE_LOOKBACK_HOURS = 24;
-
-/**
- * Fraction of the live window the band has finished confirming. Everything
- * after it is the incoming edge screen 08 draws greyed, with the live-sample
- * dot sitting exactly on the boundary — the handoff README's "hard-switches
- * at 62%". It is a property of how the band reports, which is why it lives
- * behind the sensor boundary rather than being a number a screen invents.
- */
-const SETTLED_FRACTION = 0.62;
 
 /** Whether the band is reporting. A real implementation would derive this
  * from the link itself; the mock exposes a setter so the demo panel can put
@@ -137,13 +129,13 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
 
   /**
    * ONE QUESTION, ONE ANSWER. This is gated on `bandHasSignal` exactly as
-   * `heartRate()` is, and for the same reason stated there: an offline band
+   * `kickWindow()` is, and for the same reason stated there: an offline band
    * returns nothing at all, because absence is absence.
    *
    * It used to ignore the flag entirely, which meant the boundary answered
    * "what did the band report in the last 24 hours" two different ways at the
    * same moment: Home and the live view drew the no-signal block from the
-   * heart-rate windows, while `reportAssembly` pulled ~288 movement samples
+   * kick windows, while `reportAssembly` pulled ~288 movement samples
    * out of THIS method for the very same window and put them in the report she
    * downloads — and which rule 4e has already sent to her clinic. The seed
    * generator (src/data/seedActivity.ts) has no signal check of its own and
@@ -193,36 +185,31 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
     return bandHasSignal;
   }
 
-  /** Shared by both heart-rate windows. An offline band returns nothing at
-   * all rather than a flat line at the baseline — a flat line is a claim,
-   * and this boundary never makes one. */
-  private heartRate(spanMinutes: number, stepSeconds: number, settledFraction: number): HeartRateWindow {
-    if (!bandHasSignal) {
+  /**
+   * Shared by both kick windows.
+   *
+   * `settledIndex` marks the last COMPLETE interval. The final bucket is the
+   * one still in progress — today, or this hour — which the trace draws as
+   * the greyed incoming edge with the dot on the boundary.
+   *
+   * That is a real property of a tally rather than a display convention, and
+   * it matters: the current bucket is always lower than its neighbours simply
+   * because it is unfinished, and a UI that drew it at full weight would show
+   * every patient a decline every single day.
+   */
+  private kickWindow(samples: KickSample[]): KickWindow {
+    if (!bandHasSignal || samples.length === 0) {
       return { samples: [], settledIndex: -1 };
     }
-    const samples = generateHeartRateWindow(
-      this.variant,
-      Date.now(),
-      spanMinutes * 60 * 1000,
-      stepSeconds * 1000
-    );
-    if (samples.length === 0) {
-      return { samples, settledIndex: -1 };
-    }
-    return {
-      samples,
-      settledIndex: Math.max(0, Math.round(settledFraction * (samples.length - 1))),
-    };
+    return { samples, settledIndex: Math.max(0, samples.length - 2) };
   }
 
-  getHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow {
-    // Everything Home shows has already settled — its trace is a record of
-    // the day, not a live edge.
-    return this.heartRate(spanMinutes, stepSeconds, 1);
+  getDailyKickWindow(): KickWindow {
+    return this.kickWindow(generateDailyKicks(this.variant, Date.now()));
   }
 
-  getLiveHeartRateWindow(spanMinutes: number, stepSeconds: number): HeartRateWindow {
-    return this.heartRate(spanMinutes, stepSeconds, SETTLED_FRACTION);
+  getHourlyKickWindow(): KickWindow {
+    return this.kickWindow(generateHourlyKicks(this.variant, Date.now()));
   }
 
   /** Fans out one sample to every current subscriber. The single place any
