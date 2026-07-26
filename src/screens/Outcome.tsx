@@ -14,18 +14,22 @@
  * language, because "which state am I in" must never be something she has to
  * re-learn the layout to answer:
  *
- *  - emergency tier: 999 is the primary route (EMERGENCY_TIER_CONTACT
- *    below), the resolved maternity/clinic triage line moves below the fold
- *    as EmergencyCall's own quiet secondary row, and the card carries the
- *    while-you-wait advice.
- *  - triage tier: exactly the previous behaviour — `getTriageContact()` is
- *    primary and 999 is the quiet secondary route. Only the number and the
- *    framing change between tiers, nothing else (the brief's words).
+ *  - emergency and triage tier both now resolve to the exact same call
+ *    (EmergencyCall, tel:999 — the one-call-route change) — there is no
+ *    second, quieter number either tier falls back to any more. What still
+ *    differs between them is framing and weight, not the destination: the
+ *    emergency tier's card carries the while-you-wait physical-safety
+ *    advice and gets EmergencyCall at `lead` prominence (the number is the
+ *    largest interactive element on screen); the triage tier's card carries
+ *    the report-handoff instruction only, at `standard` prominence. Both
+ *    titles now say the same thing on purpose: "Please call paramedics
+ *    now."
  *  - routine: states ONLY what this app witnessed — that she pressed Send,
- *    at what time, and when her clinic is open. It contains NO red at all:
- *    its "call your clinic" affordance is a plain non-emergency control
- *    rendered here, never EmergencyCall, so the emergency token stays
- *    confined to the one component that owns it.
+ *    at what time, and when her clinic is open — plus one procedural fact
+ *    (her own answers triggered no red flag) and one instruction (call
+ *    paramedics on 999 if she's still worried), as plain text, never a
+ *    control. It contains NO red at all: the emergency token stays confined
+ *    to the one component that owns it, which this state never renders.
  *
  * WHAT THE ROUTINE STATE USED TO CLAIM, AND WHY IT NO LONGER DOES. It drew a
  * three-row timeline — "Sent", "Received by your clinic" (hardcoded
@@ -78,6 +82,7 @@ import {
   OUTCOME_ESCALATE_TRIAGE_TITLE,
   OUTCOME_ROUTINE_NO_SUBMISSION_TITLE,
   OUTCOME_ROUTINE_TITLE,
+  OUTCOME_TRIAGE_ADVICE,
   emergencyHandoverLead,
   outcomeReportSentNote,
   outcomeRoutineClinicHours,
@@ -87,13 +92,12 @@ import {
 } from '../data/clinicalContent';
 import { disposition } from '../logic/disposition';
 import { getEscalationTier } from '../logic/escalationTier';
-import { getTriageContact } from '../logic/triageContact';
 import { downloadReportPdf } from '../logic/reportPdf';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
 import { assembleReportData, formatClock, isClinicOpenAt } from './reportAssembly';
-import type { CategoryAnswer, TriageContact, VoiceNote } from '../types';
+import type { CategoryAnswer, VoiceNote } from '../types';
 
 interface OutcomeSnapshot {
   entryPath: 'alert' | 'adhoc';
@@ -162,7 +166,6 @@ export default function Outcome(): ReactElement {
 
   const result = disposition(snapshot.entryPath, snapshot.categoryAnswers);
   const tier = result === 'escalate' ? getEscalationTier(snapshot.categoryAnswers) : null;
-  const contact = getTriageContact(now(), patientFixture);
   const clinic = patientFixture.clinic;
   const clinicOpen = isClinicOpenAt(now(), clinic.hours);
   // NULLABLE ON PURPOSE. `null` means nothing was ever submitted, which is
@@ -225,6 +228,7 @@ export default function Outcome(): ReactElement {
       <EscalateOutcome
         title={OUTCOME_ESCALATE_TRIAGE_TITLE}
         lead={OUTCOME_ESCALATE_TRIAGE_LEAD}
+        advice={OUTCOME_TRIAGE_ADVICE}
         reportSentNote={outcomeReportSentNote(clinic.name)}
         prominence="standard"
         onDownload={handleDownload}
@@ -234,7 +238,6 @@ export default function Outcome(): ReactElement {
 
   return (
     <RoutineOutcome
-      contact={contact}
       clinicName={clinic.name}
       clinicOpen={clinicOpen}
       clinicOpensAt={clinic.hours.opens}
@@ -308,7 +311,6 @@ function EscalateOutcome({
 }
 
 interface RoutineOutcomeProps {
-  contact: TriageContact;
   clinicName: string;
   clinicOpen: boolean;
   clinicOpensAt: string;
@@ -318,7 +320,6 @@ interface RoutineOutcomeProps {
 }
 
 function RoutineOutcome({
-  contact,
   clinicName,
   clinicOpen,
   clinicOpensAt,
@@ -357,7 +358,7 @@ function RoutineOutcome({
             {OUTCOME_DOWNLOAD_ROUTINE_LABEL}
           </button>
 
-          <p className="text-body text-text">{outcomeRoutineWaitNote(contact.label)}</p>
+          <p className="text-body text-text">{outcomeRoutineWaitNote()}</p>
 
         </div>
       </div>

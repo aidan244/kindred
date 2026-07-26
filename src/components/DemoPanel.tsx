@@ -164,6 +164,7 @@ export function DemoPanel(): ReactElement {
   } = useAppState();
 
   const screenLinks: ScreenLink[] = [
+    { key: 'welcome', label: 'Welcome', path: '/welcome' },
     { key: 'onboarding', label: 'Onboarding', path: '/onboarding' },
     {
       key: 'home',

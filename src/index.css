@@ -199,6 +199,61 @@
   }
 }
 
+/*
+ * The welcome aura's colour wax/wane (src/components/WelcomeAura.tsx only —
+ * the persistent orb above never uses these). A third loop per layer,
+ * independent of its turn and its brightness breath, so warmth genuinely
+ * swells and recedes rather than each layer sitting at one fixed hue.
+ *
+ * Blur is restated at every stop rather than left as a static property:
+ * `filter` has no per-function animation, so once something else animates
+ * `filter` on the same element, the whole property comes under the
+ * animation's control for as long as it runs — omitting blur here would not
+ * leave it alone, it would blank it to 0 for the loop's duration. Each
+ * layer's own blur value (matching its filter in WelcomeAura.tsx) is
+ * repeated at 0%/50%/100% purely so it never visibly changes, only
+ * hue-rotate and saturate do.
+ */
+@keyframes aura-glow-core {
+  0%,
+  100% {
+    filter: blur(24px) hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: blur(24px) hue-rotate(15deg) saturate(1.42);
+  }
+}
+
+@keyframes aura-glow-ring-1 {
+  0%,
+  100% {
+    filter: blur(20px) hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: blur(20px) hue-rotate(-11deg) saturate(1.32);
+  }
+}
+
+@keyframes aura-glow-ring-2 {
+  0%,
+  100% {
+    filter: blur(26px) hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: blur(26px) hue-rotate(9deg) saturate(1.28);
+  }
+}
+
+@keyframes aura-glow-field {
+  0%,
+  100% {
+    filter: blur(40px) hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: blur(40px) hue-rotate(-6deg) saturate(1.22);
+  }
+}
+
 /* --------------------------------------------------------------------------
  * Route transitions — handoff README, "page_transitions". One visual
  * language for the whole app: opacity plus a short directional slide, off

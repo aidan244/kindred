@@ -91,6 +91,15 @@ export function asInjectable(stream: MovementStream): InjectableMovementStream |
 }
 
 const LIVE_EMIT_INTERVAL_MS = 4000;
+
+/** How often the live view's current-hour bucket gains another kick, purely
+ * so a demo session watching /live actually sees the trace move — see
+ * getHourlyKickWindow()'s own comment for why this is scoped to the hourly
+ * window alone. Faster than a real baby kicks (the seed data's own hourly
+ * totals imply roughly one every few minutes), which is a deliberate,
+ * demo-only acceleration: a presenter watching for thirty seconds needs to
+ * see movement, not a statistically honest wait. */
+const LIVE_HOURLY_TICK_SECONDS = 6;
 const BASELINE_LOOKBACK_HOURS = 24;
 
 /** Whether the band is reporting. A real implementation would derive this
@@ -218,8 +227,35 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
     return this.kickWindow(generateDailyKicks(this.variant, Date.now()));
   }
 
+  /**
+   * Adds a live-feeling increment to the current (still-unsettled) hour's
+   * tally only — never to a settled bucket, which stays exactly what
+   * seedKicks.ts says it is. A pure function of the real clock, not a
+   * stored counter: it resets naturally at the top of every real hour (the
+   * same honest reset the bucket itself already represents — see this
+   * class's kickWindow() on why the newest bucket is always partial), and
+   * needs no interval/cleanup of its own since getHourlyKickWindow() is
+   * poll-based (src/screens/LiveView.tsx reads it on a 1s timer) rather
+   * than push-based.
+   */
+  private withLiveHourlyGrowth(samples: KickSample[]): KickSample[] {
+    if (samples.length === 0) {
+      return samples;
+    }
+    const now = new Date();
+    const secondsIntoHour = now.getMinutes() * 60 + now.getSeconds();
+    const bonus = Math.floor(secondsIntoHour / LIVE_HOURLY_TICK_SECONDS);
+    if (bonus === 0) {
+      return samples;
+    }
+    const lastIndex = samples.length - 1;
+    return samples.map((sample, index) =>
+      index === lastIndex ? { ...sample, kicks: sample.kicks + bonus } : sample
+    );
+  }
+
   getHourlyKickWindow(): KickWindow {
-    return this.kickWindow(generateHourlyKicks(this.variant, Date.now()));
+    return this.kickWindow(this.withLiveHourlyGrowth(generateHourlyKicks(this.variant, Date.now())));
   }
 
   getTrendKickWindow(): KickWindow {

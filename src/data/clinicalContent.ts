@@ -21,6 +21,18 @@ import type {
 } from '../types';
 
 // ---------------------------------------------------------------------------
+// Welcome (src/screens/Welcome.tsx) — the very first thing anyone sees, one
+// screen before onboarding starts. Not one of the original handoff README's
+// numbered screens.
+// ---------------------------------------------------------------------------
+
+export const WELCOME_BRAND_LABEL = 'Kindred';
+export const WELCOME_TITLE = 'Welcome to Kindred';
+export const WELCOME_TAGLINE = 'A warm place to listen to your baby, in your own time.';
+export const WELCOME_CTA_LABEL = 'Begin';
+export const WELCOME_CTA_FINE_PRINT = 'Takes about two minutes to set up.';
+
+// ---------------------------------------------------------------------------
 // Onboarding questions
 // ---------------------------------------------------------------------------
 
@@ -497,10 +509,6 @@ export const ALERT_FRAMING_TITLE = "Worth checking on your baby's movements.";
 export const ALERT_FRAMING_BODY =
   'You know your baby best. Speak to Kindred if anything feels different.';
 
-/** The one-tap way out of the alert block. Never a dialog, never a
- * confirmation (handoff README §02). */
-export const ALERT_FRAMING_DISMISS_LABEL = 'Dismiss';
-
 /**
  * The label on the product's primary action, in both the places it appears —
  * the docked CheckInControl and the alert block's accent pill. It used to be
@@ -773,7 +781,15 @@ export function emergencyHandoverLead(
 }
 
 export const OUTCOME_EMERGENCY_ADVICE =
-  'Stay where you are, lie on your left side, and unlock the front door if you can.';
+  'Stay where you are, lie on your left side, and unlock the front door if you can. Download your report below and have it ready to hand to the paramedics.';
+
+/** The triage tier's own version of the advice above — no left-side or
+ * front-door instruction, since that's specific to the emergency tier's
+ * collapse/heavy-bleeding gates, but the same instruction to have the
+ * report ready applies regardless of tier: both now resolve to the same
+ * call. */
+export const OUTCOME_TRIAGE_ADVICE =
+  'Download your report below and have it ready to hand to the paramedics.';
 
 /**
  * Names where the report has already gone, so she does not have to explain it
@@ -804,10 +820,13 @@ export function outcomeReportSentNote(clinicName: string): string {
 // softened, because a softer wording would still be a claim.
 // ---------------------------------------------------------------------------
 
-/** The triage tier's title. Not "Please call 999 now." — in this tier 999 is
- * the quiet secondary route, not the number on the pill, and a title naming a
- * number she is not being asked to ring first would be actively wrong. */
-export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
+/** The triage tier's title. Used to read just "Call now" from when 999 was
+ * the quiet secondary route rather than the only route — now that every
+ * call in the product resolves to paramedics on 999 (the one-call-route
+ * change), naming that explicitly is no longer wrong, and matches the
+ * emergency tier's title exactly: the two tiers still differ in lead copy
+ * and in EmergencyCall's prominence, but they ask for the identical action. */
+export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Please call paramedics now.';
 
 /** The triage tier's lead. It used to be the resolved contact's own `reason`
  * ("Your clinic is open now, call this number."), which named a route that no
@@ -815,7 +834,7 @@ export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
 export const OUTCOME_ESCALATE_TRIAGE_LEAD =
   'Something you have told us needs looking at now.';
 
-export const OUTCOME_DOWNLOAD_ESCALATE_LABEL = 'Download your report to bring with you';
+export const OUTCOME_DOWNLOAD_ESCALATE_LABEL = 'Download your report to hand to paramedics';
 export const OUTCOME_DOWNLOAD_ROUTINE_LABEL = 'Download your report';
 
 /** The routine state's title once she has pressed Send. */
@@ -839,22 +858,14 @@ export function outcomeRoutineClinicHours(
   return clinicOpen ? `${clinicName} is open now.` : `${clinicName} opens at ${clinicOpensAt}.`;
 }
 
-export function outcomeRoutineWaitNote(contactLabel: string): string {
-  return `If anything changes, ${lowerFirstWord(
-    CHECK_IN_CONTROL_LABEL
-  )} again or call ${contactLabel}.`;
-}
-
-/** The routine state's plain (never red, never EmergencyCall) call row. */
-export function outcomeCallContactLabel(contactLabel: string): string {
-  return `Call ${contactLabel}`;
-}
-
-/** Lowercases the first word of a schema-authored label so it can sit
- * mid-sentence. Only ever applied to copy in this file, never to anything she
- * typed. */
-function lowerFirstWord(value: string): string {
-  return value.length > 0 ? value.charAt(0).toLowerCase() + value.slice(1) : value;
+/** The routine state's closing line. Two facts, nothing else: what her own
+ * answers did (triggered no red flag), and the one thing left to do if that
+ * doesn't match how she feels. Says "paramedics", not a clinic name — the
+ * one-call-route change means every call in the product resolves to 999,
+ * and this line used to be the last place that still pointed at the clinic
+ * contact instead. */
+export function outcomeRoutineWaitNote(): string {
+  return "Nothing you told us was flagged as a concern. If you're still worried, call paramedics on 999.";
 }
 
 // ---------------------------------------------------------------------------

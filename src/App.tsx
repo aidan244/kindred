@@ -21,6 +21,7 @@ import { DemoPanel } from './components/DemoPanel';
 import { DockHost } from './components/Dock';
 import { RouteTransition } from './components/RouteTransition';
 import { useThemeSync } from './theme/useThemeSync';
+import Welcome from './screens/Welcome';
 import Onboarding from './screens/Onboarding';
 import Home from './screens/Home';
 import LiveView from './screens/LiveView';
@@ -38,13 +39,14 @@ export function App(): ReactElement {
         <main className="relative z-[1] min-h-screen">
           <RouteTransition>
             <Routes>
+              <Route path="/welcome" element={<Welcome />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/home" element={<Home />} />
               <Route path="/live" element={<LiveView />} />
               <Route path="/trends" element={<Trends />} />
               <Route path="/triage" element={<TriageFlow />} />
               <Route path="/outcome" element={<Outcome />} />
-              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/" element={<Navigate to="/welcome" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           </RouteTransition>

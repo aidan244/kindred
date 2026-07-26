@@ -166,6 +166,17 @@
    * breathing rather than as flicker. */
   --aura-breath-trough: 0.55;
 
+  /* Welcome aura glow periods (src/components/WelcomeAura.tsx) — a third
+   * loop per layer, alongside its turn (--dur-orb-*) and its brightness
+   * breath (--dur-aura-breath-*), so the colour itself visibly waxes and
+   * wanes rather than each layer sitting at one fixed hue. All four
+   * distinct from each other and from every turn and breath value above,
+   * same "never visibly loops" principle. */
+  --dur-aura-glow-core: 21s;
+  --dur-aura-glow-ring-1: 29s;
+  --dur-aura-glow-ring-2: 37s;
+  --dur-aura-glow-field: 27s;
+
   /* Route transition — handoff README "page_transitions". One visual
    * language for the whole app: opacity plus a short directional slide. */
   --dur-route: 320ms;
@@ -232,6 +243,26 @@
   --aura-ring-2-a: 0.11;
   --aura-field-rgb: var(--accent-rgb);
   --aura-field-a: 0.08;
+
+  /* Welcome aura — night. --------------------------------------------
+   * src/components/WelcomeAura.tsx only, never the persistent Aura above.
+   * The same lamp, turned all the way up: one hero screen, before
+   * onboarding, that never has to sit under dense readable UI the way the
+   * ambient orb does, so the alphas are far past that one's contrast
+   * ceiling on purpose. Core is a ROSE, not a red — chosen at a hue
+   * clearly apart from --emergency (#e85b50, a coral-red close to hue 6°)
+   * so this cannot echo the call control anywhere in the product; rose
+   * sits near hue 344°. Ring/field stay inside the existing lamp family
+   * (an amber bridge, then --accent-rgb itself), so the welcome screen
+   * reads as the same warmth turned up, not a second, unrelated palette. */
+  --aura-welcome-core-rgb: 255 81 120;
+  --aura-welcome-core-a: 0.95;
+  --aura-welcome-ring-1-rgb: 255 138 74;
+  --aura-welcome-ring-1-a: 0.65;
+  --aura-welcome-ring-2-rgb: 255 138 74;
+  --aura-welcome-ring-2-a: 0.55;
+  --aura-welcome-field-rgb: var(--accent-rgb);
+  --aura-welcome-field-a: 0.5;
 }
 
 /* --------------------------------------------------------------------------
@@ -305,4 +336,16 @@
   --aura-ring-2-a: 0.14;
   --aura-field-rgb: 255 251 243;
   --aura-field-a: 0.10;
+
+  /* Welcome aura — day. Same hue logic as night's block above (a rose
+   * core, clearly apart from --emergency's #b3302a; an amber ring; the
+   * field in this theme's own --accent-rgb), recalibrated for paper. */
+  --aura-welcome-core-rgb: 239 77 117;
+  --aura-welcome-core-a: 0.85;
+  --aura-welcome-ring-1-rgb: 242 135 74;
+  --aura-welcome-ring-1-a: 0.6;
+  --aura-welcome-ring-2-rgb: 242 135 74;
+  --aura-welcome-ring-2-a: 0.5;
+  --aura-welcome-field-rgb: var(--accent-rgb);
+  --aura-welcome-field-a: 0.35;
 }

@@ -10,6 +10,7 @@ afterEach(() => {
   setBandSignal(true);
   resetMovementStreamForTests();
   vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 
 describe('generateTrendKicks', () => {
@@ -95,5 +96,55 @@ describe('getMovementStream — VITE_BACKEND branching', () => {
     expect(stream.getDailyKickWindow()).toEqual({ samples: [], settledIndex: -1 });
     expect(stream.getHourlyKickWindow()).toEqual({ samples: [], settledIndex: -1 });
     expect(stream.getTrendKickWindow()).toEqual({ samples: [], settledIndex: -1 });
+  });
+});
+
+describe('getHourlyKickWindow — live growth', () => {
+  it('adds exactly floor(secondsIntoHour / 6) to the current-hour bucket only', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T10:00:12')); // 12s into the hour -> bonus of 2
+
+    const window = getMovementStream('active').getHourlyKickWindow();
+    const last = window.samples.length - 1;
+    // HOURLY.active's last entry is 8 (src/data/seedKicks.ts) -> 8 + 2 = 10.
+    expect(window.samples[last].kicks).toBe(10);
+    // The settled bucket is untouched — only the unfinished one grows.
+    expect(window.samples[window.settledIndex].kicks).toBe(22);
+  });
+
+  it('grows as more of the real hour elapses, without ever declining mid-hour', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T10:00:00'));
+    const atTop = getMovementStream('active').getHourlyKickWindow();
+
+    vi.setSystemTime(new Date('2026-01-15T10:00:36'));
+    const later = getMovementStream('active').getHourlyKickWindow();
+
+    const lastIndex = atTop.samples.length - 1;
+    expect(later.samples[lastIndex].kicks).toBeGreaterThan(atTop.samples[lastIndex].kicks);
+  });
+
+  it('the reset at a real hour boundary is a new bucket, not a decline of the old one', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T10:00:50'));
+    const late = getMovementStream('active').getHourlyKickWindow();
+    const lastIndex = late.samples.length - 1;
+
+    vi.setSystemTime(new Date('2026-01-15T11:00:00'));
+    const nextHour = getMovementStream('active').getHourlyKickWindow();
+
+    expect(nextHour.samples[lastIndex].timestamp.getTime()).toBeGreaterThan(
+      late.samples[lastIndex].timestamp.getTime()
+    );
+  });
+
+  it('is empty, not growing, when the band has no signal', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T10:05:00'));
+    setBandSignal(false);
+    expect(getMovementStream('active').getHourlyKickWindow()).toEqual({
+      samples: [],
+      settledIndex: -1,
+    });
   });
 });
