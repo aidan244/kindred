@@ -7,6 +7,7 @@ import {
   patientFixture,
   redFlagCategories,
 } from '../data/clinicalContent';
+import type { DetectorFiring } from '../lib/movement/types';
 import type { CategoryAnswer } from '../types';
 
 /**
@@ -121,6 +122,49 @@ describe('MockBackend alerts', () => {
   it('createSession rejects an unknown alertId', async () => {
     const backend = new MockBackend();
     await expect(backend.createSession('alert', 'not-a-real-alert')).rejects.toThrow();
+  });
+
+  it('fireDetectorAlert creates a pending alert sharing the exact same lifecycle as fireAlert', async () => {
+    const backend = new MockBackend();
+    const firing: DetectorFiring = {
+      detectorVersion: 'kick-detector-v1',
+      rule: 'reduced_kick_rate',
+      windowFrom: new Date('2026-01-12T00:00:00'),
+      windowTo: new Date('2026-01-15T00:00:00'),
+      coverageFraction: 1,
+      observed: 65,
+      expected: 186,
+      threshold: 93,
+    };
+    const alert = await backend.fireDetectorAlert(firing);
+    expect(await backend.getPendingAlert()).toEqual(alert);
+
+    await backend.createSession('alert', alert.id);
+    expect(await backend.getPendingAlert()).toBeNull();
+  });
+
+  it('fireDetectorAlert audits the rule and measurements', async () => {
+    const backend = new MockBackend();
+    const firing: DetectorFiring = {
+      detectorVersion: 'kick-detector-v1',
+      rule: 'reduced_kick_rate',
+      windowFrom: new Date('2026-01-12T00:00:00'),
+      windowTo: new Date('2026-01-15T00:00:00'),
+      coverageFraction: 1,
+      observed: 65,
+      expected: 186,
+      threshold: 93,
+    };
+    await backend.fireDetectorAlert(firing);
+
+    const log = await backend.getAuditLog();
+    const entry = log.find((e) => e.event === 'alert_fired');
+    expect(entry?.detail).toMatchObject({
+      rule: 'reduced_kick_rate',
+      observed: 65,
+      expected: 186,
+      threshold: 93,
+    });
   });
 });
 

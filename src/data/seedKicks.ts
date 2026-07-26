@@ -52,12 +52,22 @@ const TREND: Record<ActivityVariant, readonly number[]> = {
     295, 273, 252, 248, 266, 292, 309, 305, 285, 267, 266, 286, 313, 330, 326, 305, 286, 283, 299,
     323, 337, 329, 305, 281, 275, 288, 170,
   ],
+  // The last 4 entries (indices 80-83) are a deliberate exception to "no
+  // threshold implied" above: this is the one demo scenario in the product
+  // built to actually cross the kick detector's threshold
+  // (kickDetector.ts), so indices 80-82 (the 3 complete days immediately
+  // before today) read as a real drop against this patient's own 80-day
+  // history — ~65 kicks/day against a ~186 baseline, well under the
+  // detector's 0.5x threshold — rather than the ordinary week-to-week
+  // variation the rest of this table models. Index 83 (today, partial)
+  // drops too, purely so the chart doesn't show today reading higher than
+  // the settled dip beside it; the detector never reads a partial day.
   quiet: [
     212, 209, 194, 180, 178, 190, 208, 217, 211, 194, 177, 172, 182, 197, 204, 197, 178, 161, 156,
     166, 181, 191, 185, 169, 154, 152, 164, 183, 195, 193, 179, 166, 166, 180, 199, 212, 209, 194,
     180, 178, 190, 208, 217, 211, 194, 177, 172, 182, 197, 204, 197, 178, 161, 156, 166, 181, 191,
     185, 169, 154, 152, 164, 183, 195, 193, 179, 166, 166, 180, 199, 212, 209, 194, 180, 178, 190,
-    208, 217, 211, 194, 177, 172, 182, 99,
+    208, 217, 211, 194, 60, 65, 70, 35,
   ],
 };
 

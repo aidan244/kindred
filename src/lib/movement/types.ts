@@ -70,6 +70,23 @@ export interface Baseline {
   byHour: HourlyBaseline[];
 }
 
+/**
+ * Personal baseline for the kick channel — deliberately much simpler than
+ * Baseline above. A kick tally is already a whole day's aggregate, not a
+ * raw signal, so there's no per-hour structure to model and no coverage
+ * concept: a KickWindow is either present or empty (see kickDetector.ts).
+ */
+export interface KickBaseline {
+  computedAt: Date;
+  /** Complete days folded into meanKicksPerDay — everything strictly
+   * before the recent window being evaluated. */
+  daysUsed: number;
+  /** False until daysUsed >= KICK_BASELINE_MIN_DAYS. While false, the
+   * detector cannot fire — same contract as Baseline.sufficient. */
+  sufficient: boolean;
+  meanKicksPerDay: number;
+}
+
 export interface ActiveFractionByHour {
   hour: number;
   activeFraction: number;
@@ -107,7 +124,7 @@ export interface FeatureSet {
   circadianFit: CircadianFit;
 }
 
-export type DetectorRule = 'sustained_low_rate' | 'extended_quiet';
+export type DetectorRule = 'sustained_low_rate' | 'extended_quiet' | 'reduced_kick_rate';
 
 /** Everything the backend brief's `alerts` table wants to persist,
  * produced in one place so Phase 3 can write it straight through. */

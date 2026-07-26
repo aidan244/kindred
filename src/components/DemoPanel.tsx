@@ -23,6 +23,9 @@ import { useNavigate } from 'react-router-dom';
 import { Microphone, SlidersHorizontal, X } from '@phosphor-icons/react';
 import { useAppState } from '../context/AppStateContext';
 import { COLLAPSE_CATEGORY_ID, redFlagCategories } from '../data/clinicalContent';
+import { getHeldBackend } from '../lib/backend/factory';
+import { computeKickBaseline } from '../lib/movement/kickBaseline.ts';
+import { detectKickReduction } from '../lib/movement/kickDetector.ts';
 import { asInjectable, getMovementStream } from '../sensors/MovementStream';
 import type { CategoryAnswer, VoiceNote } from '../types';
 import { PushBanner } from './PushBanner';
@@ -269,6 +272,38 @@ export function DemoPanel(): ReactElement {
   // below renders neither button nor heading.
   const injectableMovementStream = asInjectable(getMovementStream(activityVariant));
 
+  // The real kick-baseline detector (src/lib/movement/kickDetector.ts),
+  // computed plainly here rather than memoised — nothing else in this file
+  // uses that pattern, and this is a handful of array operations over an
+  // 84-entry table. `{ lastAlertAt: null, sessionOpen: false }` is a
+  // deliberate bypass of the refractory/session gating, not an oversight:
+  // that gating exists to stop an unattended production job spamming a
+  // patient, and this button is presenter-triggered — it has to fire
+  // identically on the fifth press as the first.
+  const kickWindow = getMovementStream(activityVariant).getTrendKickWindow();
+  const kickBaseline = computeKickBaseline(kickWindow, now());
+  const kickFiring = detectKickReduction(kickWindow, kickBaseline, now(), {
+    lastAlertAt: null,
+    sessionOpen: false,
+  });
+
+  const runKickCheck = (): void => {
+    if (kickFiring) {
+      setIsPushVisible(true); // exact same visible path as firePushNotification()
+      void (async () => {
+        try {
+          const backend = await getHeldBackend();
+          await backend.fireDetectorAlert(kickFiring);
+        } catch (error) {
+          // Best-effort: never block the visible demo on a backend hiccup,
+          // same posture HeldBackend.audit() itself already documents.
+          console.error('DemoPanel: fireDetectorAlert failed', error);
+        }
+      })();
+    }
+    setIsOpen(false);
+  };
+
   const injectSingleSample = (): void => {
     injectableMovementStream?.injectSample();
     setIsOpen(false);
@@ -369,6 +404,35 @@ export function DemoPanel(): ReactElement {
               >
                 Fire push notification
               </button>
+              <p className="mt-2 text-caption text-text-muted">Manual — fires regardless of data.</p>
+            </PanelSection>
+
+            <PanelSection title="Kick check (against her own baseline)">
+              <p className="mb-2 text-caption text-text-muted">
+                {kickWindow.samples.length === 0
+                  ? 'No signal — nothing to check.'
+                  : !kickBaseline.sufficient
+                    ? 'Not enough history yet.'
+                    : `Baseline ${Math.round(kickBaseline.meanKicksPerDay)} kicks/day, from ${kickBaseline.daysUsed} days.`}
+              </p>
+              <button
+                type="button"
+                onClick={runKickCheck}
+                className="press tap w-full rounded-chip bg-accent px-3 py-2 text-left text-on-accent"
+              >
+                Run RFM check
+              </button>
+              {kickFiring && (
+                <p className="mt-2 text-caption text-text-muted">
+                  Reduced: {Math.round(kickFiring.observed)} vs baseline {Math.round(kickFiring.expected)}{' '}
+                  (threshold {Math.round(kickFiring.threshold)}) — notification fired.
+                </p>
+              )}
+              {kickBaseline.sufficient && !kickFiring && kickWindow.samples.length > 0 && (
+                <p className="mt-2 text-caption text-text-muted">
+                  Not reduced against baseline — no notification fired.
+                </p>
+              )}
             </PanelSection>
 
             {/* The README's own `bandOffline` tweak prop. One switch, two

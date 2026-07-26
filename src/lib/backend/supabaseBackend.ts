@@ -29,7 +29,7 @@ import type {
   CategoryAnswer,
   ReportData,
 } from '../../types';
-import type { Baseline, MovementBin } from '../movement/types.ts';
+import type { Baseline, DetectorFiring, MovementBin } from '../movement/types.ts';
 import { buildCanonicalReportPdfBlob } from '../report/pdf.ts';
 import type {
   CanonicalReportData,
@@ -482,6 +482,37 @@ export class SupabaseBackend implements HeldBackend {
       );
     }
     await this.audit('alert_fired', { alertId: data.id });
+    return alertFromRow(data as AlertRow);
+  }
+
+  /** Exists so this class satisfies the same HeldBackend interface as
+   * MockBackend's demo-driven fireDetectorAlert() — real firings for this
+   * rule are written by a service-role job (a future kick-aware sibling of
+   * supabase/functions/run-detector), not this method. See fireAlert()'s
+   * own doc comment for the identical reasoning. */
+  async fireDetectorAlert(firing: DetectorFiring): Promise<Alert> {
+    const { data, error } = await this.client
+      .from('alerts')
+      .insert({
+        patient_id: this.patientId,
+        detector_version: firing.detectorVersion,
+        rule: firing.rule,
+        window_from: firing.windowFrom.toISOString(),
+        window_to: firing.windowTo.toISOString(),
+        coverage_fraction: firing.coverageFraction,
+        observed: firing.observed,
+        expected: firing.expected,
+        threshold: firing.threshold,
+      })
+      .select()
+      .single();
+    if (error || !data) {
+      throw new Error(
+        `fireDetectorAlert failed (${error?.message ?? 'no row returned'}). This is expected under ` +
+          "RLS for a patient-role client — see this method's doc comment."
+      );
+    }
+    await this.audit('alert_fired', { alertId: data.id, rule: firing.rule });
     return alertFromRow(data as AlertRow);
   }
 

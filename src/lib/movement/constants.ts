@@ -83,3 +83,29 @@ export const DETECTOR_SUSTAINED_HOURS = 3;
 export const DETECTOR_REFRACTORY_HOURS = 6;
 export const DETECTOR_QUIET_INTERVAL_PERCENTILE = 0.95;
 export const DETECTOR_QUIET_INTERVAL_MIN_COVERAGE = 0.9;
+
+// ---------------------------------------------------------------------------
+// Kick-channel detector — engineering placeholders tuned only to give the
+// demo two reliably distinguishable scenarios. Unlike SENSITIVITY/
+// SPECIFICITY above, there is no published kick-count norm behind any of
+// these; do not read them as a clinical threshold (the same reason
+// held-build-brief.md's "no verdict, ever" rule exists at all — this
+// product does not assert what a normal count is, anywhere, including
+// here). Deliberately simpler than the boolean channel above: a kick tally
+// is already a day's aggregate, so there's no finer grain to fit a
+// per-hour-of-day model against, and a baseline spanning many weeks
+// already washes out the weekly rhythm without needing to model it
+// explicitly — see kickBaseline.ts.
+// ---------------------------------------------------------------------------
+
+export const KICK_DETECTOR_VERSION = 'kick-detector-v1';
+/** How many trailing complete days count as "recent", averaged together
+ * rather than each required individually below threshold — a single ratio
+ * check, not a second sustained-rule. */
+export const KICK_RECENT_DAYS = 3;
+export const KICK_BASELINE_MIN_DAYS = 14;
+export const KICK_RATE_THRESHOLD_FACTOR = 0.5;
+/** Daily-granularity data shouldn't re-fire inside the same ~day, so this
+ * is longer than the boolean channel's 6h refractory above. Not exercised
+ * by the demo panel's call site — see DemoPanel.tsx's own comment on why. */
+export const KICK_DETECTOR_REFRACTORY_HOURS = 20;

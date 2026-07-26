@@ -24,6 +24,7 @@ import { getMovementStream } from '../../sensors/MovementStream';
 import { aggregateToBins } from '../movement/aggregate.ts';
 import { computeBaseline } from '../movement/baseline.ts';
 import { generateMovement } from '../movement/generator.ts';
+import type { DetectorFiring } from '../movement/types.ts';
 import { demoRedFlagAnswers, redFlagCategories, toRedFlagEntries } from '../report/clinicalRedFlags.ts';
 import { buildCanonicalReportPdfBlob } from '../report/pdf.ts';
 import type { CanonicalReportData, PriorEpisode } from '../report/types.ts';
@@ -184,6 +185,23 @@ export class MockBackend implements HeldBackend {
     const alert: Alert = { id: this.nextAlertId(), firedAt: this.now(), outcome: null };
     this.alerts.set(alert.id, alert);
     await this.audit('alert_fired', { alertId: alert.id });
+    return alert;
+  }
+
+  async fireDetectorAlert(firing: DetectorFiring): Promise<Alert> {
+    const alert: Alert = { id: this.nextAlertId(), firedAt: this.now(), outcome: null };
+    this.alerts.set(alert.id, alert);
+    await this.audit('alert_fired', {
+      alertId: alert.id,
+      rule: firing.rule,
+      detectorVersion: firing.detectorVersion,
+      observed: firing.observed,
+      expected: firing.expected,
+      threshold: firing.threshold,
+      coverageFraction: firing.coverageFraction,
+      windowFrom: firing.windowFrom.toISOString(),
+      windowTo: firing.windowTo.toISOString(),
+    });
     return alert;
   }
 

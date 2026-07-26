@@ -20,6 +20,7 @@
  */
 
 import type { CategoryAnswer } from '../../types';
+import type { DetectorFiring } from '../movement/types.ts';
 import type {
   Alert,
   AlertId,
@@ -46,6 +47,14 @@ export interface HeldBackend {
   /** Fires a new alert (the mock's equivalent of the wearable's detector
    * firing / the demo panel's "fire push notification"). */
   fireAlert(): Promise<Alert>;
+  /** Fires a real, data-driven alert from a detector's firing — the kick
+   * channel's counterpart to supabase/functions/run-detector writing a
+   * DetectorFiring straight into `alerts` for the boolean channel. Kept
+   * distinct from fireAlert(), which stays the demo panel's honest
+   * zero-measurement manual button ('manual_demo' — see 001_core.sql and
+   * that method's own doc comment): faking plausible detector numbers for
+   * a manual press would be dishonest, so the two paths never merge. */
+  fireDetectorAlert(firing: DetectorFiring): Promise<Alert>;
   getPendingAlert(): Promise<Alert | null>;
   acknowledgeAlert(alertId: AlertId, outcome: AlertOutcome): Promise<void>;
 
