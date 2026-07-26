@@ -20,12 +20,17 @@ import { SupabaseBackend } from './supabaseBackend';
 
 type BackendKind = 'mock' | 'supabase';
 
-function resolveBackendKind(): BackendKind {
+/** Exported so src/sensors/MovementStream.ts's getMovementStream() can
+ * branch the same way, from the same env var, without duplicating the
+ * read-and-default logic. */
+export function resolveBackendKind(): BackendKind {
   const raw = (import.meta.env.VITE_BACKEND as string | undefined)?.trim().toLowerCase();
   return raw === 'supabase' ? 'supabase' : 'mock';
 }
 
-function createSupabaseClient(): SupabaseClient {
+/** Exported for the same reason as resolveBackendKind() above — the sensor
+ * boundary's real implementation needs its own authenticated client. */
+export function createSupabaseClient(): SupabaseClient {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (!url || !anonKey) {

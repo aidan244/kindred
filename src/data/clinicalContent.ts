@@ -675,6 +675,15 @@ export function kickTraceLiveSummary(kicks: number): string {
   return `Your baby's kicks, by hour. ${kicks} kicks in the last full hour.`;
 }
 
+/** The trends screen's dot marks today, same as the card — "so far today"
+ * rather than a completed-day claim, since today's tally is still counting
+ * (same reasoning as kickTraceLiveSummary's "last full hour", the other
+ * direction: this one is honest about being partial instead of naming the
+ * last complete unit). */
+export function kickTraceTrendSummary(kicks: number): string {
+  return `Your baby's kicks, by day, over the last 12 weeks. ${kicks} kicks so far today.`;
+}
+
 /** 03 — the third chip on a gate question: a way to answer in her own words
  * instead of picking one of the two. */
 export const CHECK_IN_ADD_MORE_INFO = 'Add more info';
@@ -877,6 +886,16 @@ export function liveViewSessionCaption(sinceClock: string): string {
 /** 08 — the session ring's control. It is a toggle, not two controls, so it
  * carries one name in both states (see SessionRing.tsx). */
 export const LIVE_VIEW_PAUSE_LABEL = 'Pause listening';
+
+/** Trends — the weeks/days view (src/screens/Trends.tsx). Not one of the
+ * original handoff README's numbered screens; reuses TRACE_NOW_LABEL
+ * ('today') for its trailing label and bandOfflineCopy/BAND_OFFLINE_NO_CLOCK
+ * for its no-signal state, same as Home's card, rather than duplicating
+ * either — both are daily-tally views, unlike the live view's hourly one. */
+export const TRENDS_TITLE = 'Trends';
+export const TRENDS_TRACE_START_LABEL = '12 weeks ago';
+/** Home's secondary way into Trends, beside the live-data card. */
+export const HOME_OPEN_TRENDS = 'Open trends';
 
 // ---------------------------------------------------------------------------
 // Voice notes (handoff README §05). These name an object and two controls in

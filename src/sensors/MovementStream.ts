@@ -7,13 +7,18 @@
  * new implementation of this same interface — no other file should need to
  * change.
  *
- * The mock implementation here reads from the seeded data generator for
- * whichever activity variant the demo panel currently has selected.
+ * getMovementStream() below picks the implementation from VITE_BACKEND, same
+ * as src/lib/backend/factory.ts's getHeldBackend(): the default mock reads
+ * from the seeded data generator for whichever activity variant the demo
+ * panel currently has selected; `supabase` mode returns the one real
+ * patient's stream instead, backed by src/lib/backend/supabaseMovementStream.ts.
  */
 
 import type { ActivitySample, ActivityVariant, KickSample, KickWindow } from '../types';
 import { generateSeedActivity } from '../data/seedActivity';
-import { generateDailyKicks, generateHourlyKicks } from '../data/seedKicks';
+import { generateDailyKicks, generateHourlyKicks, generateTrendKicks } from '../data/seedKicks';
+import { createSupabaseClient, resolveBackendKind } from '../lib/backend/factory';
+import { SupabaseMovementStream } from '../lib/backend/supabaseMovementStream';
 
 export interface MovementStream {
   /** Subscribes to a live sample stream. Returns an unsubscribe function. */
@@ -47,6 +52,11 @@ export interface MovementStream {
 
   /** Kicks per hour, oldest first, for the live view. */
   getHourlyKickWindow(): KickWindow;
+
+  /** Kicks per day, oldest first, across a 12-week look-back — the longer
+   * view for the weeks/days trend screen. A band with no signal returns an
+   * empty window, same as the other two. */
+  getTrendKickWindow(): KickWindow;
 
   /** Whether the band is currently reporting at all. */
   hasSignal(): boolean;
@@ -186,7 +196,7 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
   }
 
   /**
-   * Shared by both kick windows.
+   * Shared by all three kick windows.
    *
    * `settledIndex` marks the last COMPLETE interval. The final bucket is the
    * one still in progress — today, or this hour — which the trace draws as
@@ -210,6 +220,10 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
 
   getHourlyKickWindow(): KickWindow {
     return this.kickWindow(generateHourlyKicks(this.variant, Date.now()));
+  }
+
+  getTrendKickWindow(): KickWindow {
+    return this.kickWindow(generateTrendKicks(this.variant, Date.now()));
   }
 
   /** Fans out one sample to every current subscriber. The single place any
@@ -298,15 +312,134 @@ class MockMovementStream implements MovementStream, InjectableMovementStream {
 const instances = new Map<ActivityVariant, MockMovementStream>();
 
 /**
- * Returns the MovementStream for the given seeded activity variant. Backed
- * by mock data now; a real integration would provide the same interface
- * from actual hardware/an API and this factory would return that instead.
+ * Bridges getMovementStream()'s synchronous contract to a real backend.
+ * Constructing a SupabaseMovementStream needs an async round trip first —
+ * resolve the authenticated user, then her `patients` row (mirrors
+ * supabaseBackend.ts's `create()`, not independently invented) — and
+ * getMovementStream() callers (Home, LiveView, Trends) call it synchronously
+ * from render, so there is no honest synchronous version of that resolution.
+ *
+ * Every method answers "no data yet" until it resolves — the same
+ * absence-is-absence contract an offline band already has, not a special
+ * loading case any caller needs to know about. subscribe() re-subscribes to
+ * the real stream once it exists, so a caller that subscribed before
+ * resolution doesn't miss anything once data starts arriving, and its
+ * returned unsubscribe function stays correct whichever side of resolution
+ * it's called from.
+ */
+class PendingSupabaseMovementStream implements MovementStream {
+  private real: SupabaseMovementStream | null = null;
+  private pendingCallbacks = new Set<(sample: ActivitySample) => void>();
+  private realUnsubscribers = new Map<(sample: ActivitySample) => void, () => void>();
+
+  constructor(resolve: Promise<SupabaseMovementStream>) {
+    resolve
+      .then((stream) => {
+        this.real = stream;
+        for (const cb of this.pendingCallbacks) {
+          this.realUnsubscribers.set(cb, stream.subscribe(cb));
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('getMovementStream(): failed to resolve the Supabase-backed stream', error);
+      });
+  }
+
+  subscribe(cb: (sample: ActivitySample) => void): () => void {
+    if (this.real) {
+      return this.real.subscribe(cb);
+    }
+    this.pendingCallbacks.add(cb);
+    return () => {
+      this.pendingCallbacks.delete(cb);
+      this.realUnsubscribers.get(cb)?.();
+      this.realUnsubscribers.delete(cb);
+    };
+  }
+
+  getWindow(hours: number): ActivitySample[] {
+    return this.real?.getWindow(hours) ?? [];
+  }
+
+  getBaseline(): number {
+    return this.real?.getBaseline() ?? 0;
+  }
+
+  getDailyKickWindow(): KickWindow {
+    return this.real?.getDailyKickWindow() ?? { samples: [], settledIndex: -1 };
+  }
+
+  getHourlyKickWindow(): KickWindow {
+    return this.real?.getHourlyKickWindow() ?? { samples: [], settledIndex: -1 };
+  }
+
+  getTrendKickWindow(): KickWindow {
+    return this.real?.getTrendKickWindow() ?? { samples: [], settledIndex: -1 };
+  }
+
+  hasSignal(): boolean {
+    return this.real?.hasSignal() ?? false;
+  }
+}
+
+/** Mirrors supabaseBackend.ts's SupabaseBackend.create() exactly (auth user
+ * -> her patients row), duplicated rather than shared because HeldBackend
+ * deliberately exposes neither its client nor its resolved patient ID —
+ * getMovementStream() and getHeldBackend() are independent singletons and
+ * stay that way. Unify the two only if this ever drifts. */
+async function resolveSupabaseMovementStream(): Promise<SupabaseMovementStream> {
+  const client = createSupabaseClient();
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError || !userData.user) {
+    throw new Error(
+      'getMovementStream(): VITE_BACKEND=supabase requires an authenticated Supabase session, ' +
+        "and none was found — see supabaseBackend.ts's create() for the same gap."
+    );
+  }
+  const { data: patientRow, error: patientError } = await client
+    .from('patients')
+    .select('id')
+    .eq('auth_user_id', userData.user.id)
+    .single();
+  if (patientError || !patientRow) {
+    throw new Error(
+      `getMovementStream(): no patients row found for authenticated user ${userData.user.id}.`
+    );
+  }
+  return new SupabaseMovementStream(client, (patientRow as { id: string }).id);
+}
+
+let supabaseInstance: MovementStream | null = null;
+
+/**
+ * Returns the MovementStream for the given seeded activity variant, or the
+ * one real patient's stream when VITE_BACKEND=supabase. `variant` is a
+ * mock-only concept (which seeded pattern to demo) and is ignored in
+ * Supabase mode — there is one authenticated patient, not a variant to pick
+ * — so callers never need to branch on which backend is selected; they keep
+ * passing activityVariant from app state either way.
  */
 export function getMovementStream(variant: ActivityVariant): MovementStream {
+  if (resolveBackendKind() === 'supabase') {
+    if (!supabaseInstance) {
+      supabaseInstance = new PendingSupabaseMovementStream(resolveSupabaseMovementStream());
+    }
+    return supabaseInstance;
+  }
+
   let instance = instances.get(variant);
   if (!instance) {
     instance = new MockMovementStream(variant);
     instances.set(variant, instance);
   }
   return instance;
+}
+
+/** Test-only: clears every cached instance (mirrors factory.ts's
+ * resetHeldBackendForTests()) so a test that stubs VITE_BACKEND doesn't
+ * leak a cached supabaseInstance — or a stale mock instance — into the
+ * next test. */
+export function resetMovementStreamForTests(): void {
+  supabaseInstance = null;
+  instances.clear();
 }

@@ -48,6 +48,7 @@ import { KindredAvatar } from '../components/KindredAvatar';
 import { LiveDataCard } from '../components/LiveDataCard';
 import { useAppState } from '../context/AppStateContext';
 import {
+  HOME_OPEN_TRENDS,
   HOME_WINDOW_LABEL,
   homeGreeting,
   homeSyncedAgo,
@@ -120,6 +121,10 @@ export default function Home(): ReactElement {
     navigate('/live');
   };
 
+  const handleOpenTrends = (): void => {
+    navigate('/trends');
+  };
+
   return (
     <>
       {/* README §01: `padding: 32px 24px 0`, content max-width 420, centred.
@@ -157,6 +162,19 @@ export default function Home(): ReactElement {
         <div className={alertActive ? undefined : 'mt-5'}>
           <LiveDataCard showNumber={!alertActive} onOpenLiveView={handleOpenLiveView} />
         </div>
+
+        {/* Trends' one entry point. Hidden on 02 for the same reason the
+            card drops its number row there: the alert is the focus, and a
+            second, unrelated way forward would compete with it. */}
+        {!alertActive && (
+          <button
+            type="button"
+            onClick={handleOpenTrends}
+            className="press tap mt-3 block w-full text-center text-caption text-accent"
+          >
+            {HOME_OPEN_TRENDS}
+          </button>
+        )}
       </div>
 
       {/* The dock. Primary weight on 01, where Speak to Kindred is this

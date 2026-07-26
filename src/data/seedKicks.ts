@@ -8,8 +8,9 @@
  * resolutions agreed about the same instant. Kick counts do not work that
  * way and should not pretend to: a kick count is a TALLY OVER AN INTERVAL,
  * not a value at an instant, so a day and an hour are genuinely different
- * measurements rather than two samplings of one signal. They are two fixed
- * tables here, and the backend will supply two real ones.
+ * measurements rather than two samplings of one signal. They are three fixed
+ * tables here (daily, hourly, and a longer 12-week daily trend table), and
+ * the backend will supply real ones for each.
  *
  * PLACEHOLDER CLINICAL SHAPE, WRITTEN BY AN ENGINEER. The numbers are chosen
  * to look plausible on screen and to give the trace something to say — a
@@ -38,6 +39,29 @@ const HOURLY: Record<ActivityVariant, readonly number[]> = {
 };
 
 /**
+ * Kicks per day, oldest first, across 12 weeks (84 days) — the longer
+ * look-back for the weeks/days trend view. Same placeholder-shape rules as
+ * `DAILY` above (a weekly rhythm plus a slower drift across weeks, no
+ * threshold implied), just a longer table. The last entry is today.
+ */
+const TREND: Record<ActivityVariant, readonly number[]> = {
+  active: [
+    330, 326, 305, 286, 283, 299, 323, 337, 329, 305, 281, 275, 288, 309, 320, 310, 285, 260, 254,
+    267, 290, 303, 295, 273, 252, 248, 266, 292, 309, 305, 285, 267, 266, 286, 313, 330, 326, 305,
+    286, 283, 299, 323, 337, 329, 305, 281, 275, 288, 309, 320, 310, 285, 260, 254, 267, 290, 303,
+    295, 273, 252, 248, 266, 292, 309, 305, 285, 267, 266, 286, 313, 330, 326, 305, 286, 283, 299,
+    323, 337, 329, 305, 281, 275, 288, 170,
+  ],
+  quiet: [
+    212, 209, 194, 180, 178, 190, 208, 217, 211, 194, 177, 172, 182, 197, 204, 197, 178, 161, 156,
+    166, 181, 191, 185, 169, 154, 152, 164, 183, 195, 193, 179, 166, 166, 180, 199, 212, 209, 194,
+    180, 178, 190, 208, 217, 211, 194, 177, 172, 182, 197, 204, 197, 178, 161, 156, 166, 181, 191,
+    185, 169, 154, 152, 164, 183, 195, 193, 179, 166, 166, 180, 199, 212, 209, 194, 180, 178, 190,
+    208, 217, 211, 194, 177, 172, 182, 99,
+  ],
+};
+
+/**
  * Builds a window of interval tallies ending at `endMs`.
  *
  * Each sample's `timestamp` is the START of its interval, which is what the
@@ -60,6 +84,7 @@ const HOUR_MS = 60 * 60 * 1000;
 /** How many buckets each table holds — the windows are fixed, not requested. */
 export const DAILY_BUCKET_COUNT = DAILY.active.length;
 export const HOURLY_BUCKET_COUNT = HOURLY.active.length;
+export const TREND_BUCKET_COUNT = TREND.active.length;
 
 export function generateDailyKicks(variant: ActivityVariant, endMs: number): KickSample[] {
   return build(DAILY[variant], endMs, DAY_MS);
@@ -67,4 +92,8 @@ export function generateDailyKicks(variant: ActivityVariant, endMs: number): Kic
 
 export function generateHourlyKicks(variant: ActivityVariant, endMs: number): KickSample[] {
   return build(HOURLY[variant], endMs, HOUR_MS);
+}
+
+export function generateTrendKicks(variant: ActivityVariant, endMs: number): KickSample[] {
+  return build(TREND[variant], endMs, DAY_MS);
 }

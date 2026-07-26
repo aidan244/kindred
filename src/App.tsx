@@ -24,6 +24,7 @@ import { useThemeSync } from './theme/useThemeSync';
 import Onboarding from './screens/Onboarding';
 import Home from './screens/Home';
 import LiveView from './screens/LiveView';
+import Trends from './screens/Trends';
 import TriageFlow from './screens/TriageFlow';
 import Outcome from './screens/Outcome';
 
@@ -40,6 +41,7 @@ export function App(): ReactElement {
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/home" element={<Home />} />
               <Route path="/live" element={<LiveView />} />
+              <Route path="/trends" element={<Trends />} />
               <Route path="/triage" element={<TriageFlow />} />
               <Route path="/outcome" element={<Outcome />} />
               <Route path="/" element={<Navigate to="/home" replace />} />

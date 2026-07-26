@@ -1,9 +1,9 @@
 /**
  * KickTrace — the one data drawing in the product (handoff README,
- * screen 01's live-data card and screen 08's live view). One polyline, no
- * fill, stroked with a horizontal gradient that runs from nearly-invisible at
- * the old end to full accent at "now", and a single dot marking the live
- * edge.
+ * screen 01's live-data card and screen 08's live view; also used by the
+ * weeks/days trends screen). One polyline, no fill, stroked with a
+ * horizontal gradient that runs from nearly-invisible at the old end to
+ * full accent at "now", and a single dot marking the live edge.
  *
  * WHAT THIS COMPONENT REFUSES TO DRAW, and why:
  *
@@ -41,20 +41,21 @@ import { useId, type ReactElement } from 'react';
 import {
   kickTraceCardSummary,
   kickTraceLiveSummary,
+  kickTraceTrendSummary,
 } from '../data/clinicalContent';
 import type { KickSample, KickWindow } from '../types';
 
 export interface KickTraceProps {
   /** From the sensor boundary. An empty `samples` array renders nothing. */
   window: KickWindow;
-  variant: 'card' | 'live';
+  variant: 'card' | 'live' | 'trend';
   className?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Screen-reader copy lives in src/data/clinicalContent.ts
-// (`kickTraceCardSummary` / `kickTraceLiveSummary`), like every
-// other patient-facing sentence.
+// (`kickTraceCardSummary` / `kickTraceLiveSummary` / `kickTraceTrendSummary`),
+// like every other patient-facing sentence.
 //
 // IT ANNOUNCES THE NUMBER ON SCREEN, not a statistic. The label used to state
 // the arithmetic MEAN of the whole window, while LiveDataCard displayed the
@@ -62,7 +63,7 @@ export interface KickTraceProps {
 // quantity and the visible quantity were different things, and the announced
 // one was a figure the app had derived rather than a reading the band
 // reported. A derived average is the closest thing to a score anywhere in this
-// product, and it was the version only non-sighted users got. Both variants
+// product, and it was the version only non-sighted users got. All variants
 // now speak `samples[dotIndex]` — the very sample the accent dot marks, which
 // is exactly what each caller prints beside the trace.
 // ---------------------------------------------------------------------------
@@ -118,6 +119,18 @@ const GEOMETRY: Record<KickTraceProps['variant'], TraceGeometry> = {
     bandBottom: 150 - BAND_INSET,
     dotRadius: 3.6,
   },
+  // No handoff README reference for this one — it's a new screen, not in
+  // the original handoff. Taller than live (190 vs 150): this is the whole
+  // point of its own screen rather than embedded above a session ring, so
+  // it gets more room. viewBox y runs 12 -> 182. A number worth a visual
+  // look once real, not a spec to hold as final.
+  trend: {
+    viewBox: '-6 12 354 170',
+    height: 190,
+    bandTop: 12 + BAND_INSET,
+    bandBottom: 182 - BAND_INSET,
+    dotRadius: 3.4,
+  },
 };
 
 const STROKE_WIDTH = 1.6;
@@ -139,8 +152,11 @@ interface GradientStop {
   opacity: number;
 }
 
-/** Home's card: one ramp, old to now, ending at full accent. */
-const CARD_STOPS: readonly GradientStop[] = [
+/** Home's card and the trends screen: one ramp, old to now, ending at full
+ * accent. Both are retrospective ("what did she have") rather than the live
+ * view's "what's arriving right now", so neither draws a greyed incoming
+ * edge — there is no edge, only a history. */
+const SIMPLE_RAMP_STOPS: readonly GradientStop[] = [
   { offset: 0, color: ACCENT, opacity: 0.07 },
   { offset: 0.4, color: ACCENT, opacity: 0.28 },
   { offset: 0.82, color: ACCENT, opacity: 0.85 },
@@ -271,16 +287,18 @@ export function KickTrace({
     .map((sample, index) => `${round2(sampleX(index, count))},${round2(kicksToY(sample.kicks))}`)
     .join(' ');
 
-  // The card's dot marks the last sample (everything Home shows has settled);
-  // the live view's marks the settled boundary, which is exactly where the
-  // gradient hands over to grey, so the dot always sits on the switch.
+  // The card and trend dots mark the last sample (both are retrospective —
+  // everything they show has already happened, unfinished current bucket
+  // included); the live view's marks the settled boundary instead, which is
+  // exactly where the gradient hands over to grey, so its dot always sits
+  // on the switch.
   const dotIndex =
-    variant === 'card' ? count - 1 : clamp(settledIndex, 0, count - 1);
+    variant === 'live' ? clamp(settledIndex, 0, count - 1) : count - 1;
   const dotX = sampleX(dotIndex, count);
   const dotY = kicksToY(samples[dotIndex].kicks);
 
   const switchOffset = count < 2 ? 1 : dotIndex / (count - 1);
-  const stops = variant === 'card' ? CARD_STOPS : liveStops(switchOffset);
+  const stops = variant === 'live' ? liveStops(switchOffset) : SIMPLE_RAMP_STOPS;
 
   // The number the caller is printing beside this trace, and therefore the
   // number the accessible label states — see the note at the top of this file.
@@ -295,7 +313,9 @@ export function KickTrace({
       aria-label={
         variant === 'card'
           ? kickTraceCardSummary(dotKicks)
-          : kickTraceLiveSummary(dotKicks)
+          : variant === 'live'
+            ? kickTraceLiveSummary(dotKicks)
+            : kickTraceTrendSummary(dotKicks)
       }
       className={className}
     >
