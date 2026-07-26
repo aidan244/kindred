@@ -42,7 +42,6 @@ import { useNavigate } from 'react-router-dom';
 import { CaretLeft } from '@phosphor-icons/react';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
-import { OperatorCall } from '../components/OperatorCall';
 import { useAppState } from '../context/AppStateContext';
 import {
   BACK_LABEL,
@@ -179,7 +178,6 @@ export default function Onboarding(): ReactElement {
           last child of every dock in the product. */}
       <Dock>
         <CheckInControl variant="bar" />
-        <OperatorCall />
       </Dock>
     </>
   );

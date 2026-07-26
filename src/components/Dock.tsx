@@ -148,6 +148,25 @@ const SAFE_BOTTOM = 'max(16px, env(safe-area-inset-bottom, 0px))';
  * so the two paths cannot drift into two different geometries. */
 const HOST_RECT_CLASSES = 'pointer-events-none fixed inset-x-0 bottom-0 z-30';
 
+/**
+ * The control column, shared by both variants.
+ *
+ * THE COLUMN ITSELF IS NOT INTERACTIVE — only its direct children are. This
+ * looks like a detail and is not: the column is a full-width fixed element
+ * carrying up to 48px of transparent top padding, sitting over the top of
+ * the conversation. When the column was `pointer-events-auto`, that padding
+ * swallowed every click that landed in it, so an answer chip that happened
+ * to sit in the strip above the dock could be pressed and simply do nothing
+ * — no feedback, no error, the whole row apparently dead.
+ *
+ * jsdom does not hit-test, so no test in this suite could see it; a repro
+ * that clicked the chip by role passed happily while the real button was
+ * unreachable. Anything added here must keep `pointer-events` on the
+ * children rather than the container.
+ */
+const DOCK_COLUMN_CLASSES =
+  'pointer-events-none [&>*]:pointer-events-auto relative mx-auto flex w-full max-w-[var(--content-max)] flex-col items-center px-6';
+
 export function Dock({ variant = 'standard', children }: DockProps): ReactElement {
   const host = useDockElement();
 
@@ -167,7 +186,7 @@ export function Dock({ variant = 'standard', children }: DockProps): ReactElemen
           style={{ background: 'linear-gradient(to top, var(--bg) 66%, transparent)' }}
         />
         <div
-          className="pointer-events-auto relative mx-auto flex w-full max-w-[var(--content-max)] flex-col items-center gap-3 px-6 pt-12"
+          className={`${DOCK_COLUMN_CLASSES} gap-3 pt-12`}
           style={{ paddingBottom: SAFE_BOTTOM }}
         >
           {children}
@@ -180,10 +199,7 @@ export function Dock({ variant = 'standard', children }: DockProps): ReactElemen
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[184px]"
           style={{ background: 'linear-gradient(to top, var(--bg), transparent)' }}
         />
-        <div
-          className="pointer-events-auto relative mx-auto flex w-full max-w-[var(--content-max)] flex-col items-center gap-1 px-6"
-          style={{ paddingBottom: SAFE_BOTTOM }}
-        >
+        <div className={`${DOCK_COLUMN_CLASSES} gap-1`} style={{ paddingBottom: SAFE_BOTTOM }}>
           {children}
         </div>
       </>

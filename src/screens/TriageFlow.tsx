@@ -26,8 +26,7 @@
  * The conversation's dock is the EMERGENCY control, not Speak to Kindred:
  * inside this flow "raise a concern" already means "call now", not "start a
  * check-in" (safety rule 3). It is never disabled, never animated, never
- * shadowed, and `OperatorCall` is the last child of it, as of every dock in
- * the product.
+ * shadowed, and
  *
  * Arriving here with `location.state?.continueAfterHardStop` means she used
  * the quiet "Add more detail for your clinic" link on the emergency outcome
@@ -36,26 +35,20 @@
  */
 
 import { useEffect, useState, type ReactElement } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CaretLeft } from '@phosphor-icons/react';
 import { revokeVoiceNoteUrl, useAppState } from '../context/AppStateContext';
 import {
   BACK_LABEL,
-  BLEEDING_CATEGORY_ID,
-  BLEEDING_EMERGENCY_NOTE,
   CHECK_IN_PROGRESS_LABEL,
   CHECK_IN_SCREEN_TITLE,
   checkInProgressValueText,
-  patientFixture,
   redFlagCategories,
 } from '../data/clinicalContent';
-import { getTriageContact } from '../logic/triageContact';
 import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
-import { OperatorCall } from '../components/OperatorCall';
 import { CheckInConversation, type BackRequest } from './triage/CheckInConversation';
 import { ReviewStep } from './triage/ReviewStep';
-import type { CategoryAnswer } from '../types';
 
 const CATEGORY_COUNT = redFlagCategories.length;
 
@@ -67,7 +60,6 @@ type EditTarget =
 
 export default function TriageFlow(): ReactElement {
   const {
-    now,
     entryPath,
     setEntryPath,
     setAlertActive,
@@ -82,15 +74,10 @@ export default function TriageFlow(): ReactElement {
     setTriagePhase,
   } = useAppState();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // "Add more detail for your clinic" (the quiet link on the emergency
   // outcome screen) arrives with this flag so her existing answers are
   // preserved rather than reset as a fresh check-in would be.
-  const continuingAfterHardStop = Boolean(
-    (location.state as { continueAfterHardStop?: boolean } | null)?.continueAfterHardStop
-  );
-
   const [phase, setPhase] = useState<Phase>('conversation');
   const [reaskCategoryId, setReaskCategoryId] = useState<string | null>(null);
   const [reaskFollowUpKey, setReaskFollowUpKey] = useState<string | null>(null);
@@ -114,7 +101,7 @@ export default function TriageFlow(): ReactElement {
   // instead, at the one point that's unambiguously "starting fresh", has no
   // such hazard.
   useEffect(() => {
-    if (reportSubmission.status === 'submitted' && !continuingAfterHardStop) {
+    if (reportSubmission.status === 'submitted') {
       categoryAnswers.forEach((answer) => revokeVoiceNoteUrl(answer.voiceNote));
       revokeVoiceNoteUrl(triageVoiceNote);
       setCategoryAnswers([]);
@@ -147,11 +134,6 @@ export default function TriageFlow(): ReactElement {
     }
   }, [phase]);
 
-  const contact = getTriageContact(now(), patientFixture);
-  const bleedingFlagged = categoryAnswers.some(
-    (a) => a.categoryId === BLEEDING_CATEGORY_ID && a.gateAnswer === 'yes'
-  );
-  const secondaryNote = bleedingFlagged ? BLEEDING_EMERGENCY_NOTE : undefined;
 
   // The rail counts CATEGORIES, not questions, and a category currently
   // being re-asked is not counted — which is why changing an answer can send
@@ -267,24 +249,7 @@ export default function TriageFlow(): ReactElement {
     navigate('/outcome');
   };
 
-  // Hard-stop rule (placeholder_content): the instant a collapse/trauma
-  // question is answered yes, submit whatever exists and navigate
-  // immediately to the emergency outcome — no remaining categories, review
-  // skipped. `finalAnswer` has already been written into categoryAnswers by
-  // CheckInConversation before this fires, so the report reflects it.
-  const handleHardStop = (_finalAnswer: CategoryAnswer): void => {
-    submitReport({ endedEarly: true });
-    navigate('/outcome');
-  };
 
-  // The quiet way back in after a hard stop (design brief: "she can keep
-  // adding detail afterward if she wants"). Review stays skipped — there is
-  // nothing to review on this path — and the number already shown cannot
-  // change (no-downgrade rule), so this just resubmits and returns.
-  const handleReturnToEmergencyOutcome = (): void => {
-    submitReport({ endedEarly: true });
-    navigate('/outcome');
-  };
 
   return (
     <>
@@ -358,8 +323,6 @@ export default function TriageFlow(): ReactElement {
               closingSkipped={closingSkipped}
               setClosingSkipped={setClosingSkipped}
               onReachedReview={() => setPhase('review')}
-              onHardStop={handleHardStop}
-              onReturnToEmergencyOutcome={handleReturnToEmergencyOutcome}
               backRequest={backRequest}
             />
           </div>
@@ -381,8 +344,7 @@ export default function TriageFlow(): ReactElement {
           the review phase (see this file's header). */}
       {phase === 'conversation' && (
         <Dock variant="tall">
-          <EmergencyCall contact={contact} prominence="standard" secondaryNote={secondaryNote} />
-          <OperatorCall />
+          <EmergencyCall prominence="standard" />
         </Dock>
       )}
     </>

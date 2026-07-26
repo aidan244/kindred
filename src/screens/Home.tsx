@@ -46,7 +46,6 @@ import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
 import { KindredAvatar } from '../components/KindredAvatar';
 import { LiveDataCard } from '../components/LiveDataCard';
-import { OperatorCall } from '../components/OperatorCall';
 import { useAppState } from '../context/AppStateContext';
 import {
   HOME_WINDOW_LABEL,
@@ -168,7 +167,6 @@ export default function Home(): ReactElement {
           last child of every dock in the product. */}
       <Dock>
         <CheckInControl variant={alertActive ? 'bar' : 'primary'} />
-        <OperatorCall />
       </Dock>
     </>
   );

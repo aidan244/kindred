@@ -74,7 +74,7 @@ const fullReport: ReportData = {
   entryPath: 'alert',
   submittedAt,
   categoryAnswers: fullCategoryAnswers,
-  hardStopEndedEarly: false,
+  endedBeforeAllCategories: false,
   freeTextDescription:
     'I noticed less movement than usual this afternoon and felt a bit dizzy.',
   freeTextVoiceNote: null,
@@ -100,7 +100,7 @@ const minimalReport: ReportData = {
   entryPath: null,
   submittedAt,
   categoryAnswers: [],
-  hardStopEndedEarly: false,
+  endedBeforeAllCategories: false,
   freeTextDescription: '',
   freeTextVoiceNote: null,
   onboardingHistory: {
@@ -168,19 +168,19 @@ describe('buildReportSections', () => {
     expect(text).not.toContain('- spotting');
   });
 
-  it('renders an unanswered category as "not asked" when the submission was not a hard stop', () => {
+  it('renders an unanswered category as "not asked" when every category was reached', () => {
     const sections = buildReportSections(minimalReport);
     for (const paragraph of sections.redFlags.paragraphs) {
       expect(paragraph).toContain('not asked');
-      expect(paragraph).not.toContain('ended early');
+      expect(paragraph).not.toContain('did not reach');
     }
   });
 
-  it('renders an unanswered category honestly as "ended early" when hardStopEndedEarly is true', () => {
+  it('says plainly that a category was never reached, rather than implying it was answered', () => {
     const collapseIndex = redFlagCategories.findIndex((c) => c.id === COLLAPSE_CATEGORY_ID);
     const report: ReportData = {
       ...fullReport,
-      hardStopEndedEarly: true,
+      endedBeforeAllCategories: true,
       categoryAnswers: [
         { categoryId: COLLAPSE_CATEGORY_ID, gateAnswer: 'yes', followUpAnswers: [] },
       ],
@@ -191,7 +191,7 @@ describe('buildReportSections', () => {
     const afterCollapse = redFlagCategories.slice(collapseIndex + 1);
     expect(afterCollapse.length).toBeGreaterThan(0);
     for (const category of afterCollapse) {
-      expect(text).toContain(`${category.gateQuestion} - not asked — check-in ended early to show emergency contact`);
+      expect(text).toContain(`${category.gateQuestion} - not asked — the check-in did not reach this question`);
     }
     // Never claims a category that was never reached was "answered no".
     expect(text).not.toMatch(/not asked - No/);

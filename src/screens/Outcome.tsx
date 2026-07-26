@@ -67,25 +67,18 @@
  */
 
 import { useEffect, useState, type ReactElement } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { DownloadSimple, PhoneCall } from '@phosphor-icons/react';
+import { DownloadSimple } from '@phosphor-icons/react';
 import { useAppState } from '../context/AppStateContext';
 import {
-  BLEEDING_CATEGORY_ID,
-  BLEEDING_EMERGENCY_NOTE,
-  EMERGENCY_ADD_MORE_LABEL,
   OUTCOME_DOWNLOAD_ESCALATE_LABEL,
   OUTCOME_DOWNLOAD_ROUTINE_LABEL,
   OUTCOME_EMERGENCY_ADVICE,
-  OUTCOME_EMERGENCY_CONTACT_REASON,
-  OUTCOME_EMERGENCY_SERVICES_LABEL,
   OUTCOME_EMERGENCY_TITLE,
+  OUTCOME_ESCALATE_TRIAGE_LEAD,
   OUTCOME_ESCALATE_TRIAGE_TITLE,
   OUTCOME_ROUTINE_NO_SUBMISSION_TITLE,
   OUTCOME_ROUTINE_TITLE,
-  callContactAccessibleLabel,
   emergencyHandoverLead,
-  outcomeCallContactLabel,
   outcomeReportSentNote,
   outcomeRoutineClinicHours,
   outcomeRoutineSentLead,
@@ -99,7 +92,6 @@ import { downloadReportPdf } from '../logic/reportPdf';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
 import { EmergencyCall } from '../components/EmergencyCall';
-import { OperatorCall } from '../components/OperatorCall';
 import { assembleReportData, formatClock, isClinicOpenAt } from './reportAssembly';
 import type { CategoryAnswer, TriageContact, VoiceNote } from '../types';
 
@@ -108,41 +100,13 @@ interface OutcomeSnapshot {
   categoryAnswers: CategoryAnswer[];
   triageDescription: string;
   triageVoiceNote: VoiceNote | null;
-  hardStopEndedEarly: boolean;
 }
-
-/** The emergency tier's primary contact — 999, framed as a call, never
- * "attend" and never "A&E" (rules 4b/4d). This is the one place in the
- * product a `TriageContact` is built by hand rather than resolved by
- * `getTriageContact()`, which never returns 999 by design (see that
- * function's header comment).
- *
- * `reason` is required by the type but is no longer what this screen shows
- * under the title: the README's lead for this tier is
- * `emergencyHandoverLead()`, which is built from what she actually told us
- * rather than from a fixed sentence. Kept honest and short so it stays
- * correct if some other surface ever reads it. */
-const EMERGENCY_TIER_CONTACT: TriageContact = {
-  label: OUTCOME_EMERGENCY_SERVICES_LABEL,
-  number: '999',
-  reason: OUTCOME_EMERGENCY_CONTACT_REASON,
-  kind: 'emergency',
-};
 
 /* Every patient-facing string on this screen — both escalate tiers and the
  * routine state, the two download labels and the call row — now comes from
  * src/data/clinicalContent.ts. This file used to hold the largest single
  * concentration of misplaced copy in the codebase, on the screen that follows
  * an escalation decision, with a header comment conceding it and deferring. */
-
-function bleedingSecondaryNote(answers: CategoryAnswer[]): string | undefined {
-  const flagged = answers.some((a) => a.categoryId === BLEEDING_CATEGORY_ID && a.gateAnswer === 'yes');
-  return flagged ? BLEEDING_EMERGENCY_NOTE : undefined;
-}
-
-function telHref(number: string): string {
-  return `tel:${number.replace(/[^\d+]/g, '')}`;
-}
 
 /** README §07: `padding: 32px 24px 0`, content max-width 420, centred. The
  * top inset is added to the 32px rather than replacing it, so the title keeps
@@ -173,7 +137,6 @@ export default function Outcome(): ReactElement {
     activityVariant,
     reportSubmission,
   } = useAppState();
-  const navigate = useNavigate();
 
   // What this outcome is about, captured once on arrival. entryPath and
   // alertActive are cleared right below so a fresh Check-in press is
@@ -184,7 +147,6 @@ export default function Outcome(): ReactElement {
     categoryAnswers,
     triageDescription,
     triageVoiceNote,
-    hardStopEndedEarly: reportSubmission.hardStopEndedEarly,
   }));
 
   useEffect(() => {
@@ -218,7 +180,6 @@ export default function Outcome(): ReactElement {
     // says anyway — the fallback stays inside the report, never on screen.
     submittedAt: submittedAt ?? now(),
     categoryAnswers: snapshot.categoryAnswers,
-    hardStopEndedEarly: snapshot.hardStopEndedEarly,
     freeTextDescription: snapshot.triageDescription,
     freeTextVoiceNote: snapshot.triageVoiceNote,
     onboardingHistory: onboardingAnswers,
@@ -227,9 +188,6 @@ export default function Outcome(): ReactElement {
 
   const handleDownload = (): void => downloadReportPdf(report);
 
-  const handleAddMore = (): void => {
-    navigate('/triage', { state: { continueAfterHardStop: true } });
-  };
 
   // NOTE ON WHAT USED TO BE HERE: this screen previously cleared
   // categoryAnswers/triageDescription/triageVoiceNote (and revoked their
@@ -260,24 +218,15 @@ export default function Outcome(): ReactElement {
         lead={emergencyHandoverLead(patientFixture.gestationWeeks, snapshot.categoryAnswers)}
         advice={OUTCOME_EMERGENCY_ADVICE}
         reportSentNote={outcomeReportSentNote(clinic.name)}
-        contact={EMERGENCY_TIER_CONTACT}
         prominence="lead"
-        secondaryContact={contact}
         onDownload={handleDownload}
-        onAddMore={handleAddMore}
       />
     ) : (
       <EscalateOutcome
         title={OUTCOME_ESCALATE_TRIAGE_TITLE}
-        // The resolved contact's own reason already says which number and
-        // why ("Your clinic is open now, call this number." / "Your clinic
-        // is closed until 08:00, call the maternity unit instead.") — it is
-        // this tier's equivalent of the emergency handover line.
-        lead={contact.reason}
+        lead={OUTCOME_ESCALATE_TRIAGE_LEAD}
         reportSentNote={outcomeReportSentNote(clinic.name)}
-        contact={contact}
         prominence="standard"
-        secondaryNote={bleedingSecondaryNote(snapshot.categoryAnswers)}
         onDownload={handleDownload}
       />
     );
@@ -304,21 +253,8 @@ interface EscalateOutcomeProps {
   advice?: string;
   /** Names where the report has already gone, muted, inside the same card. */
   reportSentNote: string;
-  contact: TriageContact;
   prominence: 'standard' | 'lead';
-  /** Triage tier: the quiet 999 fallback row. */
-  secondaryNote?: string;
-  /** Emergency tier: the resolved triage line, as the quiet secondary row.
-   * EmergencyCall renders it itself ("For anything else, call {clinic} on
-   * {number}") — this screen must not draw a second copy of it. */
-  secondaryContact?: TriageContact;
   onDownload: () => void;
-  /** Only present for the emergency tier — the quiet, non-blocking way back
-   * into the conversation (design brief: "she can keep adding detail
-   * afterward if she wants"). Never gates the number above it, and never
-   * changes it: no-downgrade means nothing she adds can move her out of the
-   * emergency tier. */
-  onAddMore?: () => void;
 }
 
 function EscalateOutcome({
@@ -326,12 +262,8 @@ function EscalateOutcome({
   lead,
   advice,
   reportSentNote,
-  contact,
   prominence,
-  secondaryNote,
-  secondaryContact,
   onDownload,
-  onAddMore,
 }: EscalateOutcomeProps): ReactElement {
   return (
     <>
@@ -362,36 +294,14 @@ function EscalateOutcome({
             {OUTCOME_DOWNLOAD_ESCALATE_LABEL}
           </button>
 
-          {/* Deliberately not styled as a call to action, and deliberately
-              the last thing in the column: adding more detail is optional
-              and must never look like a required next step. The −8px left
-              margin pulls the text back onto the gutter while the tap target
-              keeps its 56px (the same treatment as "Change this", §06). */}
-          {onAddMore && (
-            <button
-              type="button"
-              onClick={onAddMore}
-              className="tap press -ml-2 self-start px-2 text-caption text-accent"
-            >
-              {EMERGENCY_ADD_MORE_LABEL}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* README §07's dock: the emergency control, then the operator route.
-          The muted "For anything else, call …" row between them is
-          EmergencyCall's own secondary row — it is passed in, never drawn
-          here, so exactly one number ever carries visual weight.
-          OperatorCall is the last child of every dock in the product. */}
+      {/* README §07's dock, reduced to its one control. There is no
+          secondary row and no operator route any more — one number, at full
+          weight, and nothing beside it to compare it against. */}
       <Dock variant="tall">
-        <EmergencyCall
-          contact={contact}
-          prominence={prominence}
-          secondaryNote={secondaryNote}
-          secondaryContact={secondaryContact}
-        />
-        <OperatorCall />
+        <EmergencyCall prominence={prominence} />
       </Dock>
     </>
   );
@@ -449,20 +359,6 @@ function RoutineOutcome({
 
           <p className="text-body text-text">{outcomeRoutineWaitNote(contact.label)}</p>
 
-          {/* The routine state's "call your clinic" affordance. A plain
-              non-emergency control on purpose: nothing about this outcome is
-              an emergency, and EmergencyCall (the one component allowed to
-              use the red token) must never appear here. Same bar treatment
-              as the download above it — no fill, no red, no shadow. It still
-              says what it calls, for a screen reader. */}
-          <a
-            href={telHref(contact.number)}
-            aria-label={callContactAccessibleLabel(contact.label, contact.number)}
-            className={CONTENT_CONTROL_CLASSES}
-          >
-            <PhoneCall size={20} weight="light" className="shrink-0" aria-hidden="true" />
-            {outcomeCallContactLabel(contact.label)}
-          </a>
         </div>
       </div>
 
@@ -472,7 +368,6 @@ function RoutineOutcome({
           Home and the live view. */}
       <Dock>
         <CheckInControl variant="bar" />
-        <OperatorCall />
       </Dock>
     </>
   );

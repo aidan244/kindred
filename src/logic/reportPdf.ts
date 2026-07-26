@@ -245,8 +245,8 @@ function buildEntryParagraphs(report: ReportData): string[] {
  * reads in the same sequence she was asked.
  *
  * Honest, not merely accurate, about categories she was never asked
- * (`hardStopEndedEarly`): a hard-stop interrupt means later categories were
- * never reached, which reads very differently on a clinical document from
+ * (`endedBeforeAllCategories`): a category nobody reached reads very
+ * differently on a clinical document from
  * "she was asked and said no" — conflating the two would be exactly the
  * kind of silent interpretation this report must not do.
  */
@@ -258,8 +258,8 @@ function buildRedFlagParagraphs(report: ReportData): string[] {
 
     if (!answer) {
       paragraphs.push(
-        report.hardStopEndedEarly
-          ? `${category.gateQuestion} - not asked — check-in ended early to show emergency contact`
+        report.endedBeforeAllCategories
+          ? `${category.gateQuestion} - not asked — the check-in did not reach this question`
           : `${category.gateQuestion} - not asked`
       );
       continue;

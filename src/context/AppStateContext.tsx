@@ -35,12 +35,6 @@ export type TriagePhase = 'conversation' | 'review';
 export interface ReportSubmission {
   status: ReportSubmissionStatus;
   submittedAt: Date | null;
-  /** True when this submission was fired by the hard-stop interrupt (held-
-   * build-brief.md placeholder_content, "Hard-stop rule") rather than by
-   * pressing Send on the review screen — review was skipped, and any
-   * category not yet answered was genuinely never reached. Read by
-   * src/screens/reportAssembly.ts to set ReportData.hardStopEndedEarly. */
-  hardStopEndedEarly: boolean;
 }
 
 const initialOnboardingAnswers: OnboardingAnswers = {
@@ -52,7 +46,6 @@ const initialOnboardingAnswers: OnboardingAnswers = {
 const initialReportSubmission: ReportSubmission = {
   status: 'idle',
   submittedAt: null,
-  hardStopEndedEarly: false,
 };
 
 /** Revokes a VoiceNote's object URL, if it has one. The demo panel's
@@ -116,10 +109,7 @@ export interface AppState {
   setTriageVoiceNote: (note: VoiceNote | null) => void;
 
   reportSubmission: ReportSubmission;
-  /** `endedEarly: true` marks this submission as fired by the hard-stop
-   * interrupt rather than the review screen's Send (held-build-brief.md
-   * placeholder_content, "Hard-stop rule") — see ReportSubmission above. */
-  submitReport: (options?: { endedEarly?: boolean }) => void;
+  submitReport: () => void;
 
   /** Restores everything to a clean demo start. */
   resetState: () => void;
@@ -155,11 +145,10 @@ export function AppStateProvider({ children }: { children: ReactNode }): ReactEl
   const now = useCallback((): Date => clockOverride ?? new Date(), [clockOverride]);
 
   const submitReport = useCallback(
-    (options?: { endedEarly?: boolean }): void => {
+    (): void => {
       setReportSubmission({
         status: 'submitted',
         submittedAt: now(),
-        hardStopEndedEarly: options?.endedEarly ?? false,
       });
     },
     [now]

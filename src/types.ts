@@ -205,13 +205,19 @@ export interface ReportData {
   entryPath: EntryPath;
   submittedAt: Date;
   categoryAnswers: CategoryAnswer[];
-  /** True when this report was submitted by the hard-stop interrupt (held-
-   * build-brief.md placeholder_content, "Hard-stop rule") rather than by
-   * pressing Send on the review screen. When true, any category with no
-   * entry in `categoryAnswers` was genuinely never reached — the report
-   * must say so plainly rather than implying it was silently skipped or
-   * answered no (src/logic/reportPdf.ts). */
-  hardStopEndedEarly: boolean;
+  /**
+   * True when at least one category has no entry in `categoryAnswers` — the
+   * check-in did not cover everything before it was sent.
+   *
+   * DERIVED, NEVER ASSERTED (src/screens/reportAssembly.ts). It used to be a
+   * flag set by the hard-stop interrupt, which could end a check-in
+   * mid-questionnaire; that interrupt was removed, so nothing sets it any
+   * more — but a report that silently prints "no" for a question nobody
+   * asked is the one failure mode this document cannot have, so the
+   * distinction is now computed from the answers themselves and cannot fall
+   * out of step with them.
+   */
+  endedBeforeAllCategories: boolean;
   freeTextDescription: string;
   /** A voice note attached to the closing free-text beat, if any
    * (design-plan.md §15.6). Never attached to a specific category — those

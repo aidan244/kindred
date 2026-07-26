@@ -45,7 +45,6 @@ import { BandMark } from '../components/BandMark';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
 import { HeartRateTrace } from '../components/HeartRateTrace';
-import { OperatorCall } from '../components/OperatorCall';
 import { SessionRing } from '../components/SessionRing';
 import { useAppState } from '../context/AppStateContext';
 import {
@@ -302,7 +301,6 @@ export default function LiveView(): ReactElement {
           OperatorCall is the last child of every dock in the product. */}
       <Dock>
         <CheckInControl variant="bar" />
-        <OperatorCall />
       </Dock>
     </>
   );

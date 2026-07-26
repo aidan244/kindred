@@ -209,7 +209,7 @@ export function DemoPanel(): ReactElement {
       seed: () => {
         setEntryPath('adhoc');
         setCategoryAnswers(emergencyTierAnswers());
-        submitReport({ endedEarly: true });
+        submitReport();
       },
     },
     {

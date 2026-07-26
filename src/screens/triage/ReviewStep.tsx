@@ -89,7 +89,6 @@ import {
   type RedFlagCategory,
 } from '../../data/clinicalContent';
 import { Dock } from '../../components/Dock';
-import { OperatorCall } from '../../components/OperatorCall';
 import { VoiceNoteAttachmentRow } from '../../components/VoiceNoteBubble';
 import { hapticTick } from '../../logic/haptics';
 import type { CategoryAnswer, VoiceNote } from '../../types';
@@ -332,7 +331,6 @@ export function ReviewStep({
         {/* What actually happens next, and the honest limit of it. Muted
             caption weight: it informs, it does not warn. */}
         <p className="text-center text-caption text-text-muted">{REVIEW_SEND_NOTE}</p>
-        <OperatorCall />
       </Dock>
     </div>
   );

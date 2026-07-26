@@ -18,7 +18,7 @@ import type {
   ReportData,
   VoiceNote,
 } from '../types';
-import { REPORT_DISCLAIMER } from '../data/clinicalContent';
+import { redFlagCategories, REPORT_DISCLAIMER } from '../data/clinicalContent';
 import { getMovementStream } from '../sensors/MovementStream';
 
 export interface AssembleReportInput {
@@ -27,10 +27,6 @@ export interface AssembleReportInput {
   entryPath: EntryPath;
   submittedAt: Date;
   categoryAnswers: CategoryAnswer[];
-  /** Whether this submission was fired by the hard-stop interrupt rather
-   * than the review screen's Send — see AppStateContext's ReportSubmission
-   * and ReportData.hardStopEndedEarly for why the PDF needs this. */
-  hardStopEndedEarly: boolean;
   freeTextDescription: string;
   freeTextVoiceNote: VoiceNote | null;
   onboardingHistory: OnboardingAnswers;
@@ -46,7 +42,10 @@ export function assembleReportData(input: AssembleReportInput): ReportData {
     entryPath: input.entryPath,
     submittedAt: input.submittedAt,
     categoryAnswers: input.categoryAnswers,
-    hardStopEndedEarly: input.hardStopEndedEarly,
+    // Derived here rather than passed in — see ReportData.endedBeforeAllCategories.
+    endedBeforeAllCategories: redFlagCategories.some(
+      (category) => !input.categoryAnswers.some((a) => a.categoryId === category.id)
+    ),
     freeTextDescription: input.freeTextDescription,
     freeTextVoiceNote: input.freeTextVoiceNote,
     onboardingHistory: input.onboardingHistory,

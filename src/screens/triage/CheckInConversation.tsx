@@ -80,9 +80,7 @@ import {
   CHECK_IN_DETAIL_HINT,
   CHECK_IN_DETAIL_INVITE,
   CHECK_IN_FIRST_ACK,
-  CHECK_IN_HARD_STOP_CLOSING_ACK,
   CHECK_IN_OPENING,
-  CHECK_IN_RETURN_TO_EMERGENCY_LABEL,
   COMPOSER_SKIP_LABEL,
   YES_NO_OPTIONS,
   changeAnswerAccessibleLabel,
@@ -91,7 +89,6 @@ import {
   yesNoLabel,
   type RedFlagCategory,
 } from '../../data/clinicalContent';
-import { hasHardStopFired } from '../../logic/escalationTier';
 import { useDockElement } from '../../components/Dock';
 import { usePrefersReducedMotion } from '../../components/usePrefersReducedMotion';
 import { VoiceNoteBubble } from '../../components/VoiceNoteBubble';
@@ -149,16 +146,6 @@ export interface CheckInConversationProps {
   closingSkipped: boolean;
   setClosingSkipped: Dispatch<SetStateAction<boolean>>;
   onReachedReview: () => void;
-  /** Fired by "Change this" (gate flips to yes) or an additional gate
-   * question (either answered yes) on a hard-stop category — see
-   * TriageFlow.tsx's `handleHardStop`. */
-  onHardStop: (finalAnswer: CategoryAnswer) => void;
-  /** The end of the closing beat, when a hard stop already fired this
-   * session (design-plan.md-style "quiet way to add more" —
-   * held-build-brief.md placeholder_content "Hard-stop rule"): there is no
-   * review to send her to, so this returns straight to the outcome screen
-   * instead. */
-  onReturnToEmergencyOutcome: () => void;
   backRequest: BackRequest | null;
 }
 
@@ -216,12 +203,10 @@ function isCategoryResolved(
     return false;
   }
   if (category.hardStop) {
-    if (answer.gateAnswer === 'yes') {
-      return true;
-    }
-    if (answer.additionalGateAnswers?.includes('yes')) {
-      return true;
-    }
+    // Every additional gate is asked, whatever the answers were. This used to
+    // stop at the first 'yes' because a 'yes' ended the check-in outright;
+    // now that it does not, stopping early would leave the report with
+    // questions that were reached and silently never put.
     const needed = category.additionalGateQuestions?.length ?? 0;
     return (answer.additionalGateAnswers?.length ?? 0) >= needed;
   }
@@ -250,9 +235,6 @@ function gateSequenceComplete(category: RedFlagCategory, answer: CategoryAnswer 
   if (!category.hardStop) {
     return true;
   }
-  if (answer.gateAnswer === 'yes' || answer.additionalGateAnswers?.includes('yes')) {
-    return true;
-  }
   const needed = category.additionalGateQuestions?.length ?? 0;
   return (answer.additionalGateAnswers?.length ?? 0) >= needed;
 }
@@ -271,8 +253,6 @@ export function CheckInConversation({
   closingSkipped,
   setClosingSkipped,
   onReachedReview,
-  onHardStop,
-  onReturnToEmergencyOutcome,
   backRequest,
 }: CheckInConversationProps): ReactElement {
   const {
@@ -393,23 +373,6 @@ export function CheckInConversation({
       return;
     }
 
-    if (category.hardStop && value === 'yes') {
-      const finalAnswer: CategoryAnswer = {
-        categoryId: category.id,
-        gateAnswer: 'yes',
-        additionalGateAnswers: existing?.additionalGateAnswers ?? [],
-        followUpAnswers: [],
-        // Anything she had already written goes with the report on this
-        // path too — the hard stop submits immediately, so this is the last
-        // moment those words could be attached at all.
-        detail: existing?.detail ?? words?.detail,
-        voiceNote: existing?.voiceNote ?? words?.voiceNote,
-      };
-      setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), finalAnswer]);
-      onHardStop(finalAnswer);
-      return;
-    }
-
     const wasYes = existing?.gateAnswer === 'yes';
     const next: CategoryAnswer = {
       categoryId: category.id,
@@ -455,17 +418,10 @@ export function CheckInConversation({
     }
     const priorAdditional = (existing.additionalGateAnswers ?? []).slice(0, index);
 
-    if (value === 'yes') {
-      const finalAnswer: CategoryAnswer = {
-        ...existing,
-        additionalGateAnswers: [...priorAdditional, 'yes'],
-      };
-      setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), finalAnswer]);
-      onHardStop(finalAnswer);
-      return;
-    }
-
-    const nextAnswer: CategoryAnswer = { ...existing, additionalGateAnswers: [...priorAdditional, 'no'] };
+    const nextAnswer: CategoryAnswer = {
+      ...existing,
+      additionalGateAnswers: [...priorAdditional, value],
+    };
     setCategoryAnswers([...categoryAnswers.filter((a) => a.categoryId !== category.id), nextAnswer]);
   };
 
@@ -566,7 +522,7 @@ export function CheckInConversation({
   // ---------------------------------------------------------------------
 
   function renderAdditionalGates(category: RedFlagCategory, answer: CategoryAnswer): ReactNode {
-    if (!category.hardStop || !category.additionalGateQuestions || answer.gateAnswer !== 'no') {
+    if (!category.hardStop || !category.additionalGateQuestions) {
       return null;
     }
     const answered = answer.additionalGateAnswers ?? [];
@@ -856,7 +812,6 @@ export function CheckInConversation({
   const closingResolved = closingHasContent || closingSkipped;
   const showClosingComposer = closingReached && (closingReask || !closingResolved);
   const showClosingResolved = closingReached && closingResolved && !closingReask;
-  const continuingAfterHardStop = hasHardStopFired(categoryAnswers);
 
   function renderClosingBlock(): ReactElement | null {
     if (!closingReached) {
@@ -896,18 +851,16 @@ export function CheckInConversation({
             )}
             <Beat key="closing-ack" delayMs={BEAT_MS} reduced={reduced} onReveal={handleReveal}>
               <BotBubble>
-                {continuingAfterHardStop ? CHECK_IN_HARD_STOP_CLOSING_ACK : CHECK_IN_CLOSING_ACK}
+                {CHECK_IN_CLOSING_ACK}
               </BotBubble>
             </Beat>
             <Beat key="continue-button" delayMs={BEAT_MS + STAGGER_MS} reduced={reduced} onReveal={handleReveal}>
               <button
                 type="button"
-                onClick={continuingAfterHardStop ? onReturnToEmergencyOutcome : onReachedReview}
+                onClick={onReachedReview}
                 className="tap press flex w-full items-center justify-center rounded-pill bg-accent px-6 text-label text-on-accent"
               >
-                {continuingAfterHardStop
-                  ? CHECK_IN_RETURN_TO_EMERGENCY_LABEL
-                  : CHECK_IN_CONTINUE_TO_REVIEW_LABEL}
+                {CHECK_IN_CONTINUE_TO_REVIEW_LABEL}
               </button>
             </Beat>
           </>

@@ -49,7 +49,7 @@ export type EscalationTier = 'emergency' | 'triage';
  * (design-plan.md-style "quiet way to add more", held-build-brief.md
  * placeholder_content "Hard-stop rule").
  */
-export function hasHardStopFired(answers: CategoryAnswer[]): boolean {
+export function collapseFlagged(answers: CategoryAnswer[]): boolean {
   const collapse = answers.find((a) => a.categoryId === COLLAPSE_CATEGORY_ID);
   if (!collapse) {
     return false;
@@ -79,7 +79,7 @@ function bleedingIsHeavyOrPainful(answers: CategoryAnswer[]): boolean {
 }
 
 export function getEscalationTier(answers: CategoryAnswer[]): EscalationTier {
-  if (hasHardStopFired(answers)) {
+  if (collapseFlagged(answers)) {
     return 'emergency';
   }
   if (bleedingIsHeavyOrPainful(answers)) {

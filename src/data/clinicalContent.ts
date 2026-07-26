@@ -460,87 +460,33 @@ export function formatFollowUpAnswerValue(
 // from here instead.
 // ---------------------------------------------------------------------------
 
-/** The default, always-quieter secondary 999 route rendered under the
- * primary emergency control (src/components/EmergencyCall.tsx). */
-export const EMERGENCY_DEFAULT_NOTE = 'Heavy bleeding, collapse, or fitting: call 999';
-
-/** The three labels the emergency control can carry (handoff README,
- * "EmergencyCall"), one per `TriageContact.kind`. These are the words on the
- * one control the product exists to make reachable, so they live here with
- * the rest of the voice rather than inside the component. Never uppercase,
- * never a warning, never a verb other than "call". */
-export const EMERGENCY_CALL_999_LABEL = 'Call 999';
-export const EMERGENCY_CALL_CLINIC_LABEL = 'Call the clinic';
-export const EMERGENCY_CALL_UNIT_LABEL = 'Call the unit';
-
-export function emergencyCallLabel(kind: TriageContact['kind']): string {
-  switch (kind) {
-    case 'emergency':
-      return EMERGENCY_CALL_999_LABEL;
-    case 'clinic':
-      return EMERGENCY_CALL_CLINIC_LABEL;
-    default:
-      return EMERGENCY_CALL_UNIT_LABEL;
-  }
-}
-
 /**
- * What a screen reader hears on the emergency control. A call control must
- * state WHAT IT CALLS (handoff README, accessibility) — "Call the clinic"
- * alone does not say which number is about to be dialled. The 999
- * pseudo-contact is the one case that needs no suffix: "Call 999" already IS
- * the number, and "Call 999 on 999" is only noise.
- */
-export function emergencyCallAccessibleLabel(
-  kind: TriageContact['kind'],
-  number: string
-): string {
-  return kind === 'emergency'
-    ? emergencyCallLabel(kind)
-    : `${emergencyCallLabel(kind)} on ${number}`;
-}
-
-/** The quiet secondary route beneath the emergency tier's 999 pill — the
- * resolved clinic/unit line, named and dialable but never at equal weight. */
-export function emergencySecondaryContactNote(label: string, number: string): string {
-  return `For anything else, call ${label} on ${number}`;
-}
-
-/**
- * What a screen reader hears on any control that dials a number: a call
- * control must state WHAT IT CALLS (handoff README, accessibility), and
- * "Call the clinic" alone does not say which number is about to be dialled.
- * One sentence pattern for every such control in the product.
- */
-export function callContactAccessibleLabel(label: string, number: string): string {
-  return `Call ${label} on ${number}`;
-}
-
-// ---------------------------------------------------------------------------
-// The operator route (handoff README, "Operator route"). A quiet accent row
-// sitting under the primary control on EVERY screen — a human being she can
-// reach without first deciding whether her situation counts as clinical.
-// Never red, never a fill, never disabled, never animated.
-// ---------------------------------------------------------------------------
-
-export const OPERATOR_LABEL = 'Call an operator';
-export const OPERATOR_NUMBER = '0800 055 1122';
-/** What a screen reader announces — a call control must say what it calls
- * (README, motion_and_accessibility). */
-export const OPERATOR_ACCESSIBLE_LABEL = `Call a Kindred operator on ${OPERATOR_NUMBER}`;
-
-/** The bleeding-specific 999 variant, shown instead of the default note once
- * she has answered yes to the Bleeding category's gate question in the
- * red-flag questionnaire. Rendered on both the triage flow
- * (src/screens/TriageFlow.tsx) and the outcome screen (src/screens/Outcome.tsx)
- * — one constant, not two copies.
+ * THE ONE CALL ROUTE. Paramedics, and nothing else.
  *
- * Rekeyed from the old flat question id `bleeding-fluid` to the amended
- * schema's `BLEEDING_CATEGORY_ID` ('bleeding') — see the load-bearing-id
- * comment on that constant, above. Fluid loss is now its own category
- * ('fluid') rather than folded into this one, so this note is checked
- * against the Bleeding category's gate answer specifically. */
-export const BLEEDING_EMERGENCY_NOTE = 'Bleeding was flagged. If it becomes heavy, call 999.';
+ * This product used to offer three: her private clinic during its opening
+ * hours, the 24/7 maternity unit outside them, and 999 as a quieter note
+ * underneath — plus a separate operator line on every screen. That was
+ * reduced to one on instruction ("if they need to call anyone it will be
+ * paramedics"), because a person choosing between numbers is doing triage on
+ * herself at the moment she is least able to, and because two call controls
+ * on one screen is a decision nobody wanted to be asked to make.
+ *
+ * What that removed, recorded so nobody has to reconstruct it: the
+ * clinic/unit distinction and the opening-hours logic behind it, the quiet
+ * 999 fallback note, the bleeding-specific variant of that note, and the
+ * operator row. `getTriageContact()` (src/logic/triageContact.ts) still
+ * resolves a clinic, but only to NAME it in the report's "sent to" line — it
+ * no longer resolves anything anyone dials.
+ */
+export const EMERGENCY_CALL_LABEL = 'Call paramedics';
+export const EMERGENCY_NUMBER = '999';
+
+/**
+ * What a screen reader hears on the call control. A call control must state
+ * WHAT IT CALLS (handoff README, accessibility), and "Call paramedics" on its
+ * own does not say which number is about to be dialled.
+ */
+export const EMERGENCY_CALL_ACCESSIBLE_LABEL = `${EMERGENCY_CALL_LABEL} on ${EMERGENCY_NUMBER}`;
 
 /** The alert framing block's title and body (src/components/AlertFramingBlock.tsx),
  * shown when Home is in its alert state. Body updated per the founder's
@@ -637,23 +583,6 @@ export const CHECK_IN_MIC_UNAVAILABLE =
 // src/screens/triage/CheckInConversation.tsx).
 // ---------------------------------------------------------------------------
 
-/** The quiet link on the emergency outcome screen back into the
- * conversation. Deliberately not styled as a call to action — adding more
- * detail is optional and must never look like a required next step. */
-export const EMERGENCY_ADD_MORE_LABEL = 'Add more detail for your clinic';
-
-/** Replaces CHECK_IN_CLOSING_ACK when she returns via EMERGENCY_ADD_MORE_LABEL
- * — there is no review to send her to (it stayed skipped), so the closing
- * line says what actually happens instead of promising a review screen. */
-export const CHECK_IN_HARD_STOP_CLOSING_ACK = 'Thank you. This has been added to your report.';
-
-/** The button that returns her to the outcome screen after adding more,
- * once a hard stop has already fired. Replaces "Continue to review" on that
- * path — there is nothing to review, and the number she is returning to is
- * unchanged (no-downgrade rule: nothing she adds here can move her out of
- * the emergency tier). */
-export const CHECK_IN_RETURN_TO_EMERGENCY_LABEL = 'Back to your emergency contact';
-
 /** Appended to a report section when a voice note is attached. Factual only:
  * it states that a recording exists and where the clinic can get it. It never
  * describes, transcribes, or characterises the recording. */
@@ -743,7 +672,7 @@ export function heartRateTraceLiveSummary(bpm: number): string {
  * instead of picking one of the two. */
 export const CHECK_IN_ADD_MORE_INFO = 'Add more info';
 /** …and the way back out of it. */
-export const CHECK_IN_BACK_TO_OPTIONS = 'Back to the options';
+export const CHECK_IN_BACK_TO_OPTIONS = 'Back';
 
 /** 04/06 — the affordance that lets her change an answer she already gave.
  * Never a tick, never a pencil: the words say what it does. */
@@ -788,7 +717,7 @@ export const REVIEW_SEND_LABEL = 'Send this to your clinic';
 export const REVIEW_SEND_NOTE = "A midwife reads it. If it can't wait, call instead.";
 
 /** 07 — the emergency outcome. */
-export const OUTCOME_EMERGENCY_TITLE = 'Please call 999 now.';
+export const OUTCOME_EMERGENCY_TITLE = 'Please call paramedics now.';
 
 /**
  * The one sentence that tells the call handler who she is, built from what
@@ -859,14 +788,16 @@ export function outcomeReportSentNote(clinicName: string): string {
 // softened, because a softer wording would still be a claim.
 // ---------------------------------------------------------------------------
 
-/** The emergency tier's 999 pseudo-contact (src/screens/Outcome.tsx). */
-export const OUTCOME_EMERGENCY_SERVICES_LABEL = 'emergency services';
-export const OUTCOME_EMERGENCY_CONTACT_REASON = 'Call 999 now.';
-
 /** The triage tier's title. Not "Please call 999 now." — in this tier 999 is
  * the quiet secondary route, not the number on the pill, and a title naming a
  * number she is not being asked to ring first would be actively wrong. */
 export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
+
+/** The triage tier's lead. It used to be the resolved contact's own `reason`
+ * ("Your clinic is open now, call this number."), which named a route that no
+ * longer exists. This says what is true instead. */
+export const OUTCOME_ESCALATE_TRIAGE_LEAD =
+  'Something you have told us needs looking at now.';
 
 export const OUTCOME_DOWNLOAD_ESCALATE_LABEL = 'Download your report to bring with you';
 export const OUTCOME_DOWNLOAD_ROUTINE_LABEL = 'Download your report';
