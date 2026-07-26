@@ -51,6 +51,11 @@ export function assembleReportData(input: AssembleReportInput): ReportData {
     onboardingHistory: input.onboardingHistory,
     recentActivity: stream.getWindow(24),
     activityBaseline: stream.getBaseline(),
+    // The SAME window Home's trace draws, straight off the sensor boundary —
+    // so the line graph in the document and the chart she looked at are one
+    // measurement, not two derivations that could disagree. An offline band
+    // returns an empty window here, exactly as it does for `getWindow`.
+    dailyKicks: stream.getDailyKickWindow(),
     disclaimer: REPORT_DISCLAIMER,
   };
 }

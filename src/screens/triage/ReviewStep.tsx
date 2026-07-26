@@ -212,11 +212,20 @@ interface ReviewCardProps {
    * own paragraph rather than spliced into the assembled sentence — what she
    * wrote and what was assembled from taps must stay visibly separate. */
   ownWords?: string;
-  voiceNote?: VoiceNote | null;
+  /**
+   * EVERY note filed under this card, in the order she recorded them.
+   *
+   * A list rather than a single note because a category can now carry more
+   * than one: a `text` follow-up's composer has a mic, as the category's own
+   * detail beat does. This screen's whole purpose is letting her check what
+   * her clinic is about to read, so a second recording must appear here — one
+   * silently omitted would be something sent that she was never shown.
+   */
+  voiceNotes?: VoiceNote[];
   onChange: () => void;
 }
 
-function ReviewCard({ label, answer, ownWords, voiceNote, onChange }: ReviewCardProps): ReactElement {
+function ReviewCard({ label, answer, ownWords, voiceNotes = [], onChange }: ReviewCardProps): ReactElement {
   return (
     /* README: radius 22, bg surface, padding 16. No border, no shadow —
        elevation in this system is light, and a card is not elevated. */
@@ -224,9 +233,13 @@ function ReviewCard({ label, answer, ownWords, voiceNote, onChange }: ReviewCard
       <p className="text-caption text-text-muted">{label}</p>
       {answer !== null && <p className="mt-1 text-body text-text">{answer}</p>}
       {ownWords && <p className="mt-2 text-body text-text">{ownWords}</p>}
-      {voiceNote && (
-        <div className="mt-3">
-          <VoiceNoteAttachmentRow voiceNote={voiceNote} />
+      {/* 12px under the words, and 12px apart from each other — the same
+          rhythm the cards themselves keep. */}
+      {voiceNotes.length > 0 && (
+        <div className="mt-3 flex flex-col gap-3">
+          {voiceNotes.map((note, index) => (
+            <VoiceNoteAttachmentRow key={`${note.url}-${index}`} voiceNote={note} />
+          ))}
         </div>
       )}
 
@@ -274,13 +287,26 @@ export function ReviewStep({
     if (!answer) {
       return;
     }
+    // Follow-up notes first, in schema order (the order she was asked), then
+    // the category's own closing detail note — which is the order she
+    // recorded them in, and the order the conversation above showed them.
+    const categoryNotes: VoiceNote[] = [];
+    category.followUps.forEach((followUp) => {
+      const recorded = answer.followUpAnswers.find((f) => f.followUpId === followUp.id);
+      if (recorded?.voiceNote) {
+        categoryNotes.push(recorded.voiceNote);
+      }
+    });
+    if (answer.voiceNote) {
+      categoryNotes.push(answer.voiceNote);
+    }
     cards.push(
       <li key={category.id}>
         <ReviewCard
           label={category.label}
           answer={answerSentence(category, answer)}
           ownWords={answer.detail}
-          voiceNote={answer.voiceNote ?? null}
+          voiceNotes={categoryNotes}
           onChange={() => onEditCategory(category.id)}
         />
       </li>
@@ -292,7 +318,7 @@ export function ReviewStep({
         <ReviewCard
           label={REVIEW_FREE_TEXT_LABEL}
           answer={freeText.length > 0 ? description : null}
-          voiceNote={voiceNote}
+          voiceNotes={voiceNote ? [voiceNote] : []}
           onChange={onEditDescription}
         />
       </li>

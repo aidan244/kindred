@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildKickChart,
   buildReportPdf,
   buildReportSections,
   type ReportSections,
@@ -11,9 +12,38 @@ import {
   REPORT_DISCLAIMER,
   REPORT_VOICE_NOTE_NOTE,
 } from '../data/clinicalContent';
-import type { ActivitySample, CategoryAnswer, ReportData, VoiceNote } from '../types';
+import type {
+  ActivitySample,
+  CategoryAnswer,
+  KickWindow,
+  ReportData,
+  VoiceNote,
+} from '../types';
 
 const submittedAt = new Date(2026, 6, 25, 14, 32, 0, 0);
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Seven daily tallies ending on the day of submission, oldest first, with the
+ * final one deliberately the LOWEST — that is the shape a real window always
+ * has (today is still counting), and it is the shape the report must not print
+ * as a decline. `settledIndex` is 5: the last COMPLETE day.
+ */
+const KICK_COUNTS = [284, 301, 262, 318, 295, 333, 176];
+
+function buildDailyKicks(): KickWindow {
+  return {
+    samples: KICK_COUNTS.map((kicks, index) => ({
+      timestamp: new Date(submittedAt.getTime() - (KICK_COUNTS.length - 1 - index) * DAY_MS),
+      kicks,
+    })),
+    settledIndex: KICK_COUNTS.length - 2,
+  };
+}
+
+/** What an offline band, or a backend with no kicks table, actually returns. */
+const EMPTY_KICKS: KickWindow = { samples: [], settledIndex: -1 };
 
 function buildRecentActivity(): ActivitySample[] {
   const samples: ActivitySample[] = [];
@@ -91,6 +121,7 @@ const fullReport: ReportData = {
   },
   recentActivity: buildRecentActivity(),
   activityBaseline: 150,
+  dailyKicks: buildDailyKicks(),
   disclaimer: REPORT_DISCLAIMER,
 };
 
@@ -110,6 +141,7 @@ const minimalReport: ReportData = {
   },
   recentActivity: [],
   activityBaseline: 0,
+  dailyKicks: EMPTY_KICKS,
   disclaimer: '',
 };
 
@@ -301,11 +333,238 @@ describe('buildReportSections', () => {
     expect(sections.entry.paragraphs.join(' ').toLowerCase()).toContain('alert');
   });
 
+  it('prints a follow-up voice note as its own paragraph, right after that follow-up', () => {
+    const voiceNote: VoiceNote = { url: 'blob:fu', durationSeconds: 9, mimeType: 'audio/webm' };
+    // The first non-hard-stop category's first text follow-up: the one input
+    // type whose composer carries a mic.
+    const category = redFlagCategories.find(
+      (c) => !c.hardStop && c.followUps.some((f) => f.type === 'text')
+    );
+    expect(category, 'no text follow-up in the schema to test against').toBeDefined();
+    const textFollowUp = category!.followUps.find((f) => f.type === 'text')!;
+
+    const report: ReportData = {
+      ...fullReport,
+      categoryAnswers: fullReport.categoryAnswers.map((answer) =>
+        answer.categoryId === category!.id
+          ? {
+              ...answer,
+              followUpAnswers: answer.followUpAnswers.map((f) =>
+                f.followUpId === textFollowUp.id ? { ...f, voiceNote } : f
+              ),
+            }
+          : answer
+      ),
+    };
+    const paragraphs = buildReportSections(report).redFlags.paragraphs;
+    const promptIndex = paragraphs.findIndex((p) => p.startsWith(textFollowUp.prompt));
+    expect(promptIndex).toBeGreaterThan(-1);
+    // Its OWN paragraph, immediately after — never parenthesised into the
+    // answer line, and never floated to the end of the category.
+    expect(paragraphs[promptIndex + 1]).toBe(REPORT_VOICE_NOTE_NOTE);
+    expect(paragraphs[promptIndex]).not.toContain(REPORT_VOICE_NOTE_NOTE);
+  });
+
+  it('states that a voice-only follow-up has no written answer, rather than trailing a bare dash', () => {
+    const voiceNote: VoiceNote = { url: 'blob:fu', durationSeconds: 4, mimeType: 'audio/webm' };
+    const category = redFlagCategories.find(
+      (c) => !c.hardStop && c.followUps.some((f) => f.type === 'text')
+    )!;
+    const textFollowUp = category.followUps.find((f) => f.type === 'text')!;
+    const report: ReportData = {
+      ...fullReport,
+      categoryAnswers: fullReport.categoryAnswers.map((answer) =>
+        answer.categoryId === category.id
+          ? {
+              ...answer,
+              followUpAnswers: answer.followUpAnswers.map((f) =>
+                f.followUpId === textFollowUp.id
+                  ? { followUpId: f.followUpId, value: { type: 'text' as const, value: '' }, voiceNote }
+                  : f
+              ),
+            }
+          : answer
+      ),
+    };
+    const paragraphs = buildReportSections(report).redFlags.paragraphs;
+    const line = paragraphs.find((p) => p.startsWith(textFollowUp.prompt));
+    expect(line).toBe(`${textFollowUp.prompt} - no written answer`);
+    // The recording is still announced — "nothing written" is not "nothing said".
+    expect(paragraphs).toContain(REPORT_VOICE_NOTE_NOTE);
+  });
+
+  it('announces a voice note attached to either onboarding detail box', () => {
+    const voiceNote: VoiceNote = { url: 'blob:onb', durationSeconds: 6, mimeType: 'audio/webm' };
+    const monitoringOnly = buildReportSections({
+      ...fullReport,
+      onboardingHistory: {
+        ...fullReport.onboardingHistory,
+        extraMonitoring: { ...fullReport.onboardingHistory.extraMonitoring, detailVoiceNote: voiceNote },
+      },
+    });
+    expect(monitoringOnly.history.paragraphs).toContain(REPORT_VOICE_NOTE_NOTE);
+
+    const historyOnly = buildReportSections({
+      ...fullReport,
+      onboardingHistory: {
+        ...fullReport.onboardingHistory,
+        history: { ...fullReport.onboardingHistory.history, detailVoiceNote: voiceNote },
+      },
+    });
+    expect(historyOnly.history.paragraphs).toContain(REPORT_VOICE_NOTE_NOTE);
+
+    // And says nothing about a recording when there isn't one.
+    expect(buildReportSections(fullReport).history.paragraphs).not.toContain(REPORT_VOICE_NOTE_NOTE);
+  });
+
   it('never mentions the bleeding-how-much followUpId as a raw string anywhere', () => {
     // Guards against a lookup-by-id bug silently printing the id instead of
     // the follow-up's prompt/label.
     const sections = buildReportSections(fullReport);
     expect(JSON.stringify(sections)).not.toContain(BLEEDING_HOW_MUCH_FOLLOWUP_ID);
+  });
+});
+
+describe('buildKickChart — the line graph the clinician reads', () => {
+  it('starts the y axis at zero, never at the window minimum', () => {
+    const chart = buildKickChart(fullReport)!;
+    expect(chart).not.toBeNull();
+    // The whole point: 262..333 must not be zoomed onto the full plot height,
+    // which would render a 21% spread as a floor-to-ceiling swing on a
+    // document someone uses to decide whether to bring a woman in.
+    const max = Math.max(...KICK_COUNTS);
+    expect(chart.axisMax).toBeGreaterThan(max);
+    expect(chart.axisMax).toBeLessThan(max * 1.5);
+  });
+
+  it('labels the axis with a whole number that reads as a scale', () => {
+    // 333 kicks + 12% headroom is 373 — a figure corresponding to nothing.
+    expect(buildKickChart(fullReport)!.axisMax).toBe(400);
+  });
+
+  it('keeps the axis top a strictly-greater integer at every magnitude', () => {
+    // A fractional top would be printed rounded while the line was scaled
+    // against the unrounded value, putting every point off the printed scale.
+    for (const max of [1, 2, 3, 7, 9, 12, 22, 48, 96, 137, 333, 1204]) {
+      const chart = buildKickChart({
+        ...fullReport,
+        dailyKicks: { samples: [{ timestamp: submittedAt, kicks: max }], settledIndex: 0 },
+      })!;
+      expect(Number.isInteger(chart.axisMax), `axisMax for ${max}`).toBe(true);
+      expect(chart.axisMax, `axisMax for ${max}`).toBeGreaterThan(max);
+      // And not so generous that ordinary variation is squashed into the floor.
+      expect(chart.axisMax, `axisMax for ${max}`).toBeLessThanOrEqual(Math.max(2, max * 2));
+    }
+  });
+
+  it('returns null for an empty window, so nothing is drawn', () => {
+    // An empty frame with a zero axis is a confirmed week of no kicks,
+    // manufactured out of no data. There must be no chart at all.
+    expect(buildKickChart(minimalReport)).toBeNull();
+  });
+
+  it('clamps a settledIndex the sensor boundary reported out of range', () => {
+    const beyond = buildKickChart({
+      ...fullReport,
+      dailyKicks: { samples: buildDailyKicks().samples, settledIndex: 99 },
+    })!;
+    expect(beyond.settledIndex).toBe(KICK_COUNTS.length - 1);
+    const below = buildKickChart({
+      ...fullReport,
+      dailyKicks: { samples: buildDailyKicks().samples, settledIndex: -7 },
+    })!;
+    expect(below.settledIndex).toBe(-1);
+  });
+
+  it('keeps an all-zero window on the floor rather than dividing by zero', () => {
+    const chart = buildKickChart({
+      ...fullReport,
+      dailyKicks: {
+        samples: [
+          { timestamp: new Date(submittedAt.getTime() - DAY_MS), kicks: 0 },
+          { timestamp: submittedAt, kicks: 0 },
+        ],
+        settledIndex: 0,
+      },
+    })!;
+    expect(chart.axisMax).toBe(0);
+  });
+});
+
+describe('the kicks section', () => {
+  it('quotes the last COMPLETE day as the headline, never the day still counting', () => {
+    const text = buildReportSections(fullReport).kicks.paragraphs.join('\n');
+    // 333 is the last settled tally; 176 is today, still in progress. Printing
+    // 176 as the figure would show every patient a decline every single day.
+    expect(text).toContain('Most recent complete day (24 Jul): 333 kicks.');
+    expect(text).not.toContain('Most recent complete day (25 Jul)');
+  });
+
+  it('excludes the in-progress day from the quoted range', () => {
+    const text = buildReportSections(fullReport).kicks.paragraphs.join('\n');
+    // Complete days are 284..333. 176 is today and must not set the floor.
+    expect(text).toContain('Range across the complete days: 262 to 333 kicks.');
+    expect(text).not.toContain('176 to 333');
+  });
+
+  it('marks the in-progress tally in the per-day list, and explains the broken segment', () => {
+    const paragraphs = buildReportSections(fullReport).kicks.paragraphs;
+    expect(paragraphs).toContain('25 Jul: 176 kicks (interval still in progress)');
+    expect(paragraphs).toContain('24 Jul: 333 kicks');
+    expect(paragraphs.join('\n')).toContain('is not a fall');
+  });
+
+  it('prints every plotted figure as text, so the numbers do not live only in the drawing', () => {
+    const text = buildReportSections(fullReport).kicks.paragraphs.join('\n');
+    for (const kicks of KICK_COUNTS) {
+      expect(text).toContain(`${kicks} kicks`);
+    }
+  });
+
+  it('states absence, and no figures at all, when the band reported no kicks', () => {
+    const paragraphs = buildReportSections(minimalReport).kicks.paragraphs;
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0]).toMatch(/no kick counts were recorded/i);
+    // No zeroed table, no "0 kicks", no range, no window line.
+    const text = paragraphs.join('\n');
+    expect(text).not.toContain('0 kicks');
+    expect(text).not.toContain('Range');
+    expect(text).not.toContain('Daily tallies');
+  });
+
+  it('says so plainly when no interval has completed yet', () => {
+    const paragraphs = buildReportSections({
+      ...fullReport,
+      dailyKicks: { samples: buildDailyKicks().samples, settledIndex: -1 },
+    }).kicks.paragraphs;
+    const text = paragraphs.join('\n');
+    expect(text).toContain('No day in this window has completed yet.');
+    expect(text).not.toContain('Most recent complete day');
+    expect(text).not.toContain('Range across the complete days');
+  });
+
+  it('carries no verdict, threshold or adjective about the numbers', () => {
+    const text = buildReportSections(fullReport).kicks.paragraphs.join('\n');
+    // WORD-BOUNDARY, not substring. A bare `toContain('low')` fired on
+    // "always lower than a full one" — a comparison between a partial tally
+    // and a complete one, which is the opposite of a verdict about the baby
+    // and is the one sentence stopping a reader misreading the broken segment.
+    for (const word of [
+      'low',
+      'high',
+      'normal',
+      'abnormal',
+      'concerning',
+      'reassuring',
+      'healthy',
+      'expected',
+      'threshold',
+      'average',
+    ]) {
+      expect(text, `"${word}" would be a verdict`).not.toMatch(new RegExp(`\\b${word}\\b`, 'i'));
+    }
+    expect(text).not.toMatch(/a&e/i);
+    expect(text).not.toMatch(/detected/i);
   });
 });
 
@@ -326,5 +585,66 @@ describe('buildReportPdf', () => {
   it('produces multiple pages when content overflows a single page', () => {
     const doc = buildReportPdf(fullReport);
     expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+  });
+
+  it('draws the kick graph, so the report with a window is larger than the same one without', () => {
+    // The only difference between these two documents is the chart's vector
+    // output plus the kick figures; if drawKickChart were skipped or drew
+    // nothing, the two would be much closer in size.
+    const withChart = buildReportPdf(fullReport).output('arraybuffer').byteLength;
+    const withoutChart = buildReportPdf({ ...fullReport, dailyKicks: EMPTY_KICKS })
+      .output('arraybuffer').byteLength;
+    expect(withChart).toBeGreaterThan(withoutChart);
+  });
+
+  it('draws the in-progress interval broken, and hands the pen back solid', () => {
+    // READ FROM THE CONTENT STREAM, not from a getter. jsPDF has no
+    // `getLineDashPattern`, so an assertion phrased against the doc object
+    // silently passes whatever the state is. These documents are uncompressed
+    // (buildReportPdf passes no `compress` option), so the operators are
+    // literal text: `[2. 2.] 0. d` sets a dash, `[] 0. d` clears it.
+    const dashOperators = (report: ReportData): string[] => {
+      const bytes = new Uint8Array(buildReportPdf(report).output('arraybuffer'));
+      const stream = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+      return stream.match(/\[[^\]]*\]\s*[\d.]+\s+d\b/g) ?? [];
+    };
+
+    const withChart = dashOperators(fullReport);
+    // At least one broken segment: the tail past `settledIndex`.
+    expect(withChart.some((op) => /\[\s*[\d.]+/.test(op))).toBe(true);
+    // And the LAST thing it does with the dash pattern is clear it — otherwise
+    // the disclaimer that follows would render dashed, which no other
+    // assertion in this file could see.
+    expect(withChart[withChart.length - 1]).toMatch(/\[\s*\]/);
+
+    // Proof the dash came from the chart and nothing else: with no kick window
+    // there is no chart, and nothing in this document dashes anything.
+    expect(dashOperators({ ...fullReport, dailyKicks: EMPTY_KICKS })).toEqual([]);
+  });
+
+  it('restores the body font size after the graph, so the next section is not tiny', () => {
+    // drawKickChart drops to 7.5pt for its axis labels. jsPDF does expose
+    // getFontSize, so this one can be read off the document directly.
+    const doc = buildReportPdf(fullReport);
+    expect((doc as unknown as { getFontSize: () => number }).getFontSize()).toBe(10);
+  });
+
+  it('renders headlessly with a window whose final interval has not settled', () => {
+    expect(() =>
+      buildReportPdf({
+        ...fullReport,
+        dailyKicks: { samples: buildDailyKicks().samples, settledIndex: -1 },
+      })
+    ).not.toThrow();
+  });
+
+  it('renders headlessly with a single-sample kick window', () => {
+    // The one-point case has no segments to stroke and no right-hand date.
+    expect(() =>
+      buildReportPdf({
+        ...fullReport,
+        dailyKicks: { samples: [{ timestamp: submittedAt, kicks: 12 }], settledIndex: 0 },
+      })
+    ).not.toThrow();
   });
 });

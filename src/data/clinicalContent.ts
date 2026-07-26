@@ -613,6 +613,30 @@ export function homeGreeting(firstName: string): string {
   return `Welcome back, ${firstName}.`;
 }
 
+/**
+ * 01 — the invitation at the foot of the column, directly above the dock.
+ *
+ * BUILT FROM `CHECK_IN_CONTROL_LABEL`, never re-typed. It names the docked
+ * control sitting immediately below it, and the two must say the same words: a
+ * prompt that reads "Speak to Kindred" pointing at a button that says anything
+ * else is a prompt pointing at nothing. Now that the two are adjacent rather
+ * than a screen apart, they repeat the label in view of each other — deliberate
+ * (the prompt is the sentence, the pill is the door), but it is the thing to
+ * revisit first if this line is ever reworded.
+ *
+ * IT IS COPY, NOT A SECOND CONTROL. Home's dock already carries the primary
+ * accent pill for this exact action, and this screen's own note explains why a
+ * second one is wrong ("two filled accent pills would read as two different
+ * actions"). This line tells her the door is there; the dock is the door.
+ *
+ * "Worried?" ADDRESSES HER, NOT THE DATA, which is what keeps it inside the
+ * voice rules. It offers no assessment of her or the baby and makes no claim
+ * about the sensor — it answers rule 2 (her perception always wins) by saying,
+ * before anything is measured, that her own worry is reason enough. It is a
+ * question rather than an instruction for the same reason: she decides.
+ */
+export const HOME_WORRIED_PROMPT = `Worried? ${CHECK_IN_CONTROL_LABEL}`;
+
 /** The sync line's whole vocabulary, in one place. `NOT_YET_SYNCED` in
  * particular is a statement about the band's state sitting directly above
  * `bandOfflineCopy()`'s, so the two are written and reviewed together. */

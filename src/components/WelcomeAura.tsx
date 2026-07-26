@@ -21,6 +21,14 @@
  * their ellipticity (`squash`) for the same reason Aura.tsx does: a perfect
  * circle shows no rotation at all.
  *
+ * BREATH DELAYS MATCH AURA.TSX'S OWN, not independently chosen: both share
+ * the same `--dur-aura-breath-*` tokens, and Aura.tsx's own header explains
+ * why starting nearly in phase (~0.24 of each layer's cycle) rather than
+ * scattered actually matters — scattered phases let one layer dim while
+ * another brightens, cancelling the net change until the breath reads as
+ * absent. That finding applies here too, so this reuses its exact delays
+ * rather than reintroducing the failure mode it fixed.
+ *
  * Reduced motion holds every layer static at its designed alpha, same
  * reasoning as Aura.tsx: the room stays as lit as designed, the light stops
  * moving.
@@ -29,13 +37,20 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
-const ROOT_STYLE: CSSProperties = {
+// The `--aura-breath-trough` override below is scoped to this subtree via
+// plain CSS custom-property cascading — every layer's aura-breath animation
+// reads var(--aura-breath-trough), and this local redeclaration shadows the
+// :root one for anything inside this component without touching it globally.
+// React's CSSProperties has no index signature for custom properties, hence
+// the narrow, explicit extension rather than a cast to `any`.
+const ROOT_STYLE: CSSProperties & Record<'--aura-breath-trough', string> = {
   position: 'absolute',
   inset: 0,
   zIndex: 0,
   pointerEvents: 'none',
   overflow: 'hidden',
   contain: 'strict',
+  '--aura-breath-trough': 'var(--aura-welcome-breath-trough)',
 };
 
 /** Slightly above centre, same reasoning as Aura.tsx: puts the brightest
@@ -72,7 +87,7 @@ const LAYERS: Layer[] = [
     turnKeyframes: 'orb-field',
     turnDuration: 'field',
     breathDuration: 'field',
-    breathDelay: '-11s',
+    breathDelay: '-2.4s', // matches Aura.tsx's own delay for this shared 10s period
     glowKeyframes: 'aura-glow-field',
     glowDuration: 'field',
     glowDelay: '-6s',
@@ -86,7 +101,7 @@ const LAYERS: Layer[] = [
     turnKeyframes: 'orb-ring-2',
     turnDuration: 'ring-2',
     breathDuration: 'ring-2',
-    breathDelay: '-17s',
+    breathDelay: '-3.2s', // matches Aura.tsx's own delay for this shared 13s period
     glowKeyframes: 'aura-glow-ring-2',
     glowDuration: 'ring-2',
     glowDelay: '-14s',
@@ -100,7 +115,7 @@ const LAYERS: Layer[] = [
     turnKeyframes: 'orb-ring-1',
     turnDuration: 'ring-1',
     breathDuration: 'ring-1',
-    breathDelay: '-5s',
+    breathDelay: '-2.7s', // matches Aura.tsx's own delay for this shared 11s period
     glowKeyframes: 'aura-glow-ring-1',
     glowDuration: 'ring-1',
     glowDelay: '-9s',
@@ -114,7 +129,7 @@ const LAYERS: Layer[] = [
     turnKeyframes: 'orb-core',
     turnDuration: 'core',
     breathDuration: 'core',
-    breathDelay: '-3s',
+    breathDelay: '-2.2s', // matches Aura.tsx's own delay for this shared 9s period
     glowKeyframes: 'aura-glow-core',
     glowDuration: 'core',
     glowDelay: '-2s',

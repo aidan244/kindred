@@ -2,7 +2,43 @@
 <html lang="en" data-theme="night">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover` is required, not cosmetic: the dock's bottom
+         padding and Home's top padding are both written against
+         `env(safe-area-inset-*)` (Dock.tsx, Home.tsx), and those insets
+         resolve to 0 without it. Added when the app became installable —
+         a browser tab has chrome where the insets would be, a Home Screen
+         app has the notch and the home indicator. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- The Kindred mark. One SVG rather than a set of raster sizes: it is a
+         line drawing, so it stays crisp at every tab size and on every DPR,
+         and it can answer prefers-color-scheme (see public/favicon.svg).
+         There was no icon of any kind before this, so the tab was unbranded. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- INSTALLED TO THE HOME SCREEN — Share → Add to Home Screen, then it
+         launches with no browser chrome at all.
+
+         The touch icon has to be a RASTER file: iOS does not accept an SVG
+         here, which is why favicon.svg cannot simply be reused. It is
+         generated FROM favicon.svg (so the geometry is never hand-copied a
+         third time — favicon.test.ts already pins that file to
+         KindredMark.tsx) and painted in the day theme's own tokens,
+         `--bg` #efe6e1 behind `--accent` #8a5717. The stroke follows
+         markStrokeWidth for the size it is actually drawn at on a 60pt icon.
+         IT IS A BUILT ARTEFACT: regenerate it if the mark ever changes,
+         because nothing in the suite can see a stale PNG.
+
+         `status-bar-style=default` rather than `black-translucent`: the
+         translucent bar forces WHITE status bar text, which disappears
+         against the day theme's warm sand. Worth revisiting if the night
+         theme ever becomes the one the app is mostly seen in. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Kindred" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#efe6e1" />
     <title>Kindred</title>
   </head>
   <body>

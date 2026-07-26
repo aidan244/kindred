@@ -27,6 +27,11 @@
 
 import type { ReactElement } from 'react';
 import { hapticTick } from '../../logic/haptics';
+import { VoiceNoteBubble } from '../../components/VoiceNoteBubble';
+import {
+  useVoiceNoteRecording,
+  VoiceNoteMicButton,
+} from '../../components/VoiceNoteComposer';
 import {
   ONBOARDING_MULTI_SELECT_HINT,
   ONBOARDING_OPTIONAL_DETAIL_LABEL,
@@ -40,7 +45,7 @@ import type {
   OnboardingQuestion,
   YesNoUnsureOnboardingQuestion,
 } from '../../data/clinicalContent';
-import type { HistoryFlag, OnboardingAnswers } from '../../types';
+import type { HistoryFlag, OnboardingAnswers, VoiceNote } from '../../types';
 
 /* Copy is imported from src/data/clinicalContent.ts, which already owned the
  * onboarding QUESTIONS — the questions and the chrome presenting them are one
@@ -167,6 +172,10 @@ function YesNoUnsureQuestion({
         onChange={(detail) =>
           onChange({ ...answers, extraMonitoring: { ...answers.extraMonitoring, detail } })
         }
+        voiceNote={answers.extraMonitoring.detailVoiceNote ?? null}
+        onVoiceNoteChange={(detailVoiceNote) =>
+          onChange({ ...answers, extraMonitoring: { ...answers.extraMonitoring, detailVoiceNote } })
+        }
       />
     </fieldset>
   );
@@ -231,6 +240,10 @@ function MultiSelectQuestion({
         id={`question-${question.id}-detail`}
         value={answers.history.detail}
         onChange={(detail) => onChange({ ...answers, history: { ...answers.history, detail } })}
+        voiceNote={answers.history.detailVoiceNote ?? null}
+        onVoiceNoteChange={(detailVoiceNote) =>
+          onChange({ ...answers, history: { ...answers.history, detailVoiceNote } })
+        }
       />
     </fieldset>
   );
@@ -312,38 +325,88 @@ function OptionChip({
  * The sizer falls back to the placeholder while the field is empty, so the
  * resting height is whatever the placeholder actually needs at her text size.
  * The trailing space keeps a final newline from collapsing.
+ *
+ * IT CARRIES A MIC, like every other free-text box in the product. Onboarding
+ * is the first surface she ever sees and it speaks the check-in's language
+ * (see this file's header); a box that looks exactly like the composer but
+ * cannot be spoken into would teach her, on her very first screen, that the
+ * mic is a property of certain boxes rather than of typing. The recorder
+ * itself is the SAME one the composer uses (`useVoiceNoteRecording` +
+ * `VoiceNoteMicButton`), not a second implementation — there is one capability
+ * check, one refusal caption and one object-URL lifecycle in this product.
+ *
+ * NO SEND HERE, so the mic row carries no Send either: this field is fully
+ * controlled and committed by the step's own Continue, exactly as the typed
+ * text is. The note is part of the answer, not a message.
  */
 function OptionalDetailField({
   id,
   value,
   onChange,
+  voiceNote,
+  onVoiceNoteChange,
 }: {
   id: string;
   value: string;
   onChange: (next: string) => void;
+  voiceNote: VoiceNote | null;
+  onVoiceNoteChange: (next: VoiceNote | null) => void;
 }): ReactElement {
+  const recording = useVoiceNoteRecording(voiceNote, onVoiceNoteChange);
+
   return (
     <div className="mt-6">
       <label htmlFor={id} className="text-label text-text">
         {ONBOARDING_OPTIONAL_DETAIL_LABEL}
       </label>
-      <div className="mt-3 grid w-full rounded-card border border-line bg-surface p-4">
-        <span
-          aria-hidden="true"
-          className="invisible col-start-1 row-start-1 text-body"
-          style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}
-        >
-          {value.length > 0 ? `${value} ` : ONBOARDING_OPTIONAL_DETAIL_PLACEHOLDER}
-        </span>
-        <textarea
-          id={id}
-          rows={1}
-          placeholder={ONBOARDING_OPTIONAL_DETAIL_PLACEHOLDER}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="tap col-start-1 row-start-1 w-full resize-none overflow-hidden bg-transparent text-body text-text placeholder:text-text-muted"
-          style={{ overflowWrap: 'break-word' }}
-        />
+      <div className="mt-3 w-full rounded-card border border-line bg-surface p-4">
+        <div className="grid">
+          <span
+            aria-hidden="true"
+            className="invisible col-start-1 row-start-1 text-body"
+            style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}
+          >
+            {value.length > 0 ? `${value} ` : ONBOARDING_OPTIONAL_DETAIL_PLACEHOLDER}
+          </span>
+          <textarea
+            id={id}
+            rows={1}
+            placeholder={ONBOARDING_OPTIONAL_DETAIL_PLACEHOLDER}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            className="tap col-start-1 row-start-1 w-full resize-none overflow-hidden bg-transparent text-body text-text placeholder:text-text-muted"
+            style={{ overflowWrap: 'break-word' }}
+          />
+        </div>
+
+        {/* The recorded note, directly under the field — the composer's
+            placement (README §05). "Record again" is withheld when the browser
+            cannot record, matching Composer.tsx. */}
+        {voiceNote !== null && (
+          <div className="mt-4">
+            <VoiceNoteBubble
+              voiceNote={voiceNote}
+              onRecordAgain={recording.available ? recording.recordAgain : undefined}
+              onDelete={recording.discard}
+            />
+          </div>
+        )}
+
+        {/* The mic stands down once there is a note: the bubble's own
+            "Record again" / "Delete" take over, so there are never two
+            controls that start a recording.
+
+            The row's own condition mirrors what VoiceNoteMicButton will
+            actually render — a button when recording is available, the quiet
+            refusal caption when it was denied, and NOTHING when the browser
+            has no capability at all. Without that last case the wrapper would
+            still occupy its 16px top margin around nothing, padding the card
+            on exactly the devices that were never offered the affordance. */}
+        {voiceNote === null && (recording.available || recording.status === 'refused') && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <VoiceNoteMicButton recording={recording} />
+          </div>
+        )}
       </div>
     </div>
   );

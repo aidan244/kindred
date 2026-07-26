@@ -24,6 +24,8 @@ import { redFlagCategories, REPORT_DISCLAIMER } from '../../data/clinicalContent
 import type {
   ActivitySample,
   ClinicHours,
+  KickSample,
+  KickWindow,
   OnboardingAnswers,
   Patient,
   CategoryAnswer,
@@ -126,6 +128,11 @@ interface BaselineRow {
   by_hour: Array<{ hour: number; expectedActiveFraction: number; coverageFraction: number }>;
 }
 
+interface KickIntervalRow {
+  interval_start: string;
+  kicks: number;
+}
+
 interface RedFlagAnswerFullRow {
   question_id: string;
   question_text: string;
@@ -193,6 +200,24 @@ export function baselineToOverallFraction(baseline: BaselineRow | null): number 
   }
   const sum = usable.reduce((total, entry) => total + entry.expectedActiveFraction, 0);
   return sum / usable.length;
+}
+
+/** Maps up to 7 daily kick_intervals rows (queried newest-first, per
+ * kick_intervals_recent's own index order) into a KickWindow, oldest-first —
+ * the same contract src/sensors/MovementStream.ts's kickWindow() helper
+ * uses: the last bucket is always the still-forming one, so settledIndex is
+ * one behind it, never the true last index. Empty input means no rows exist
+ * yet for this patient, not an error — the report prints an absence
+ * statement in place of the graph rather than a flat line at zero. */
+export function dailyKickRowsToWindow(rows: KickIntervalRow[]): KickWindow {
+  if (rows.length === 0) {
+    return { samples: [], settledIndex: -1 };
+  }
+  const samples: KickSample[] = rows
+    .slice()
+    .reverse()
+    .map((row) => ({ timestamp: new Date(row.interval_start), kicks: row.kicks }));
+  return { samples, settledIndex: Math.max(0, samples.length - 2) };
 }
 
 /** The denormalised question_text is used here, not a fresh lookup against
@@ -565,6 +590,22 @@ export class SupabaseBackend implements HeldBackend {
       .eq('patient_id', this.patientId)
       .maybeSingle();
 
+    // kick_intervals (004_kick_intervals.sql) — the 7 most recent daily
+    // tallies, same table src/lib/backend/supabaseMovementStream.ts reads
+    // for the live screens, queried independently here rather than through
+    // that class, matching how recentActivity/activityBaseline above are
+    // also raw queries rather than a MovementStream round trip.
+    const { data: kickRows, error: kickError } = await this.client
+      .from('kick_intervals')
+      .select('interval_start, kicks')
+      .eq('patient_id', this.patientId)
+      .eq('interval_kind', 'day')
+      .order('interval_start', { ascending: false })
+      .limit(7);
+    if (kickError) {
+      throw new Error(`buildReportData failed loading kick_intervals: ${kickError.message}`);
+    }
+
     return {
       patientName: patientRow.full_name,
       gestationWeeks: gestationWeeksAt(new Date(patientRow.edd), now),
@@ -579,6 +620,7 @@ export class SupabaseBackend implements HeldBackend {
       onboardingHistory: patientRow.onboarding_history ?? EMPTY_ONBOARDING_ANSWERS,
       recentActivity: binsToActivitySamples((binRows as MovementBinRow[] | null) ?? []),
       activityBaseline: baselineToOverallFraction((baselineRow as BaselineRow | null) ?? null),
+      dailyKicks: dailyKickRowsToWindow((kickRows as KickIntervalRow[] | null) ?? []),
       disclaimer: REPORT_DISCLAIMER,
     };
   }

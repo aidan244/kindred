@@ -132,7 +132,7 @@
     transform: translate(-50%, -50%) scale(1);
   }
   50% {
-    transform: translate(-50%, -50%) translate(0.6vmin, -1vmin) scale(1.07);
+    transform: translate(-50%, -50%) translate(1.2vmin, -1.8vmin) scale(1.13);
   }
 }
 
@@ -141,7 +141,7 @@
     transform: translate(-50%, -50%) rotate(0deg) scale(1);
   }
   50% {
-    transform: translate(-50%, -50%) rotate(180deg) scale(1.05);
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.09);
   }
   100% {
     transform: translate(-50%, -50%) rotate(360deg) scale(1);
@@ -151,13 +151,13 @@
 /* Counter-turning, and shrinking where ring 1 grows. */
 @keyframes orb-ring-2 {
   0% {
-    transform: translate(-50%, -50%) rotate(0deg) scale(1.03);
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.06);
   }
   50% {
-    transform: translate(-50%, -50%) rotate(-180deg) scale(0.97);
+    transform: translate(-50%, -50%) rotate(-180deg) scale(0.94);
   }
   100% {
-    transform: translate(-50%, -50%) rotate(-360deg) scale(1.03);
+    transform: translate(-50%, -50%) rotate(-360deg) scale(1.06);
   }
 }
 
@@ -169,7 +169,7 @@
     transform: translate(-50%, -50%) scale(1);
   }
   50% {
-    transform: translate(-50%, -50%) translate(-1.2vmin, 0.8vmin) scale(1.06);
+    transform: translate(-50%, -50%) translate(-2vmin, 1.4vmin) scale(1.11);
   }
 }
 
