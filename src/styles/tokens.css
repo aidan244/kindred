@@ -224,7 +224,8 @@
    * rather than warm sand. Alphas are lower because added light reads much
    * further on darkness — see the contrast budget note above --wash-*.
    * Both themes are verified: body text (--text) and metadata
-   * (--text-muted) stay >= 4.5:1 over every bloom. */
+   * (--text-muted) stay >= 4.5:1 over every bloom.
+   *
    * ALPHAS ARE AT THE CONTRAST CEILING, not chosen by eye. They were found
    * by compositing the real geometry over a 390x844 viewport — every bloom,
    * at both ends of its drift, at every point on a grid — and taking the

@@ -226,3 +226,57 @@ describe('invariant 9 — patient-facing copy obeys the voice rules', () => {
     expect(everyString.filter((s) => /a&e/i.test(s))).toEqual([]);
   });
 });
+
+/**
+ * Both theme blocks in tokens.css must define the FULL colour set.
+ *
+ * This exists because of a real, shipped bug: an unterminated comment inside
+ * the night block swallowed every colour declaration up to the aura tokens.
+ * The block still parsed, the build still succeeded, tsc still passed and all
+ * 60 tests still went green — night simply had no --bg, --text, --text-muted
+ * or --accent, and would have rendered as unstyled fallbacks for anyone using
+ * the app after 20:00, which is most of them.
+ *
+ * Nothing else in the suite can see that: it is CSS, it is valid, and it is
+ * only wrong by omission. So this asserts presence directly, per theme.
+ */
+describe('design tokens', () => {
+  // Resolved from SRC_DIR, like every other file read in this suite —
+  // `import.meta.url` is not a file: URL under the test transform.
+  const css = readFileSync(join(SRC_DIR, 'styles', 'tokens.css'), 'utf8');
+
+  /** The declarations inside one theme block, comments stripped first so a
+   * token merely NAMED in prose cannot satisfy the assertion. */
+  function block(selector: string): string {
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const start = withoutComments.indexOf(selector);
+    expect(start, `theme block not found: ${selector}`).toBeGreaterThan(-1);
+    const open = withoutComments.indexOf('{', start);
+    return withoutComments.slice(open + 1, withoutComments.indexOf('}', open));
+  }
+
+  const REQUIRED = [
+    '--bg', '--surface', '--surface-hi',
+    '--text', '--text-muted', '--accent', '--emergency',
+    '--accent-rgb', '--text-rgb',
+    '--on-accent', '--on-emergency', '--line', '--focus',
+    '--aura-1-a', '--aura-2-a', '--aura-3-a', '--aura-4-a', '--aura-5-a',
+  ];
+
+  for (const [name, selector] of [
+    ['night', ":root[data-theme='night']"],
+    ['day', ":root[data-theme='day']"],
+  ] as const) {
+    it(`${name} defines every colour token`, () => {
+      const declarations = block(selector);
+      const missing = REQUIRED.filter((token) => !new RegExp(`${token}\\s*:`).test(declarations));
+      expect(missing).toEqual([]);
+    });
+  }
+
+  it('has no stray comment terminator, which is how the above got broken', () => {
+    // A `*/` that closes nothing: strip well-formed comments, then look for
+    // any terminator left over.
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('*/');
+  });
+});
