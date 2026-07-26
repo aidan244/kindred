@@ -19,7 +19,7 @@
  */
 
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import type { ActivitySample } from '../../types';
+import type { ActivitySample, KickWindow } from '../../types';
 import type { MovementStream } from '../../sensors/MovementStream';
 
 interface MovementBinRow {
@@ -55,6 +55,36 @@ export class SupabaseMovementStream implements MovementStream {
   ) {
     this.ready = this.prime();
     this.subscribeRealtime();
+  }
+
+  // -- Kicks ---------------------------------------------------------------
+  // The frontend's KickTrace (Home and the live view) reads these. THEY ARE
+  // NOT IMPLEMENTED YET: there is no kick table in the Supabase schema, and
+  // inventing one here would mean this class quietly returning numbers no
+  // sensor produced.
+  //
+  // An empty window is the correct stand-in and not a placeholder hack — it
+  // is exactly what the boundary returns for a band with no signal, and both
+  // screens already render their no-signal state from it. A flat line, or a
+  // fabricated tally, would be a claim. This is an absence, which is true.
+  //
+  // Implementing them means: a kicks table (interval start, count), tallies
+  // aligned to calendar days and clock hours, and `settledIndex` set to the
+  // last COMPLETE interval — see BACKEND_HANDOVER.md §2.1 and §2.2.
+
+  getDailyKickWindow(): KickWindow {
+    return { samples: [], settledIndex: -1 };
+  }
+
+  getHourlyKickWindow(): KickWindow {
+    return { samples: [], settledIndex: -1 };
+  }
+
+  /** Movement is live; kicks are not wired up. Reporting "no signal" would
+   * suppress the movement data this class DOES serve, so this answers for
+   * the link it actually has. */
+  hasSignal(): boolean {
+    return true;
   }
 
   /** Resolves once the initial cache fetch completes. The MovementStream

@@ -20,13 +20,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { disposition } from '../../logic/disposition';
 import { getTriageContact } from '../../logic/triageContact';
-import { redFlagQuestions, REPORT_DISCLAIMER } from '../../data/clinicalContent';
+import { redFlagCategories, REPORT_DISCLAIMER } from '../../data/clinicalContent';
 import type {
   ActivitySample,
   ClinicHours,
   OnboardingAnswers,
   Patient,
-  RedFlagAnswer,
+  CategoryAnswer,
   ReportData,
 } from '../../types';
 import type { Baseline, MovementBin } from '../movement/types.ts';
@@ -256,9 +256,20 @@ export function sessionFromRow(
     alertId: row.alert_id,
     startedAt: new Date(row.started_at),
     completedAt: row.completed_at ? new Date(row.completed_at) : null,
-    redFlagAnswers: answerRows.map((a): RedFlagAnswer => ({
-      questionId: a.question_id,
-      answer: a.answer ? 'yes' : 'no',
+    // The `red_flag_answers` table stores ONE BOOLEAN PER QUESTION, which is
+    // the flat model the frontend has since replaced with categories and
+    // their follow-ups. A row therefore maps to a CategoryAnswer with its
+    // gate set and `followUpAnswers` empty.
+    //
+    // THAT IS LOSSY, AND THE SCHEMA IS WHY. Nothing about the mapping loses
+    // information the database holds — it holds no follow-ups to lose. But a
+    // report rebuilt from Supabase will be thinner than the one assembled in
+    // the app, and the fix is a schema change, not a mapper change. Flagged
+    // rather than papered over.
+    redFlagAnswers: answerRows.map((a): CategoryAnswer => ({
+      categoryId: a.question_id,
+      gateAnswer: a.answer ? 'yes' : 'no',
+      followUpAnswers: [],
       detail: a.detail ?? undefined,
     })),
     freeTextDescription: selfReportRow?.raw_text ?? '',
@@ -364,14 +375,16 @@ export class SupabaseBackend implements HeldBackend {
     return sessionFromRow(data as SessionRow);
   }
 
-  async saveRedFlagAnswers(sessionId: SessionId, answers: RedFlagAnswer[]): Promise<Session> {
+  async saveRedFlagAnswers(sessionId: SessionId, answers: CategoryAnswer[]): Promise<Session> {
     const rows = answers.map((answer) => {
-      const question = redFlagQuestions.find((q) => q.id === answer.questionId);
+      const category = redFlagCategories.find((c) => c.id === answer.categoryId);
       return {
         session_id: sessionId,
-        question_id: answer.questionId,
-        question_text: question?.question ?? answer.questionId,
-        answer: answer.answer === 'yes',
+        question_id: answer.categoryId,
+        // Denormalised at write time so the stored row stays accurate even
+        // after the live question set changes.
+        question_text: category?.gateQuestion ?? answer.categoryId,
+        answer: answer.gateAnswer === 'yes',
         detail: answer.detail ?? null,
       };
     });
@@ -526,7 +539,11 @@ export class SupabaseBackend implements HeldBackend {
       gestationWeeks: gestationWeeksAt(new Date(patientRow.edd), now),
       entryPath: session.entryPath,
       submittedAt: now,
-      redFlagAnswers: session.redFlagAnswers,
+      categoryAnswers: session.redFlagAnswers,
+      endedBeforeAllCategories: redFlagCategories.some(
+        (category) => !session.redFlagAnswers.some((a) => a.categoryId === category.id)
+      ),
+      freeTextVoiceNote: null,
       freeTextDescription: session.freeTextDescription,
       onboardingHistory: patientRow.onboarding_history ?? EMPTY_ONBOARDING_ANSWERS,
       recentActivity: binsToActivitySamples((binRows as MovementBinRow[] | null) ?? []),
@@ -649,8 +666,13 @@ export class SupabaseBackend implements HeldBackend {
 
     const patient = toFrontendPatient(patientRow, clinicRow, now);
     const triageContact = session.triage_contact_shown ?? getTriageContact(now, patient);
-    const answersForDisposition: RedFlagAnswer[] = ((answerRows as RedFlagAnswerFullRow[] | null) ?? []).map(
-      (row) => ({ questionId: row.question_id, answer: row.answer ? 'yes' : 'no', detail: row.detail ?? undefined })
+    const answersForDisposition: CategoryAnswer[] = ((answerRows as RedFlagAnswerFullRow[] | null) ?? []).map(
+      (row) => ({
+        categoryId: row.question_id,
+        gateAnswer: row.answer ? 'yes' : 'no',
+        followUpAnswers: [],
+        detail: row.detail ?? undefined,
+      })
     );
     const dispositionValue: 'escalate' | 'routine' =
       session.disposition ?? disposition(session.entry_path, answersForDisposition);
