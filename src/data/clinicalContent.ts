@@ -488,18 +488,40 @@ export const EMERGENCY_NUMBER = '999';
  */
 export const EMERGENCY_CALL_ACCESSIBLE_LABEL = `${EMERGENCY_CALL_LABEL} on ${EMERGENCY_NUMBER}`;
 
-/** The alert framing block's title and body (src/components/AlertFramingBlock.tsx),
- * shown when Home is in its alert state. Body updated per the founder's
- * "Speak to Kindred" rename of the persistent check-in control (owned by a
- * concurrent change to Home/CheckInControl/AlertFramingBlock — this file is
- * the one place their copy is allowed to be edited from here). */
-export const ALERT_FRAMING_TITLE = "Worth checking on your baby's movements.";
+/**
+ * The alert framing block's title and body (src/components/AlertFramingBlock.tsx),
+ * shown when Home is in its alert state.
+ *
+ * ⚠ THIS COPY IS AN EXPLICIT EXCEPTION TO THE PRODUCT'S OWN VOICE RULES, made
+ * as a product decision and recorded here rather than quietly absorbed. What
+ * it departs from, so that whoever reads this next knows exactly what was
+ * traded and can put it back in one edit:
+ *
+ *  - "detected" is banned on every patient-facing surface (CLAUDE.md; the
+ *    voice-rules note further down this file). This copy uses it. The
+ *    invariants sweep in src/test/invariants.test.ts now carries a NAMED
+ *    exemption for these two constants and still fails for anything else.
+ *  - The block previously opened "You know your baby best." — rule 2 (her
+ *    perception always wins) stated at the moment it applies. That sentence
+ *    is gone.
+ *  - The alert now asserts a finding and instructs an emergency call. The
+ *    design's stated reason for never doing that is that the underlying event
+ *    is rare, so the detector is wrong far more often than it is right, and
+ *    copy written as an assertion cannot survive being wrong (README, clinical
+ *    safety rules; the AFFIRM trial).
+ *
+ * The report generator is NOT affected and its "detected" guards are
+ * untouched: nothing here reaches src/logic/reportPdf.ts.
+ */
+export const ALERT_FRAMING_TITLE = 'We detected an anomaly in the sensor.';
 export const ALERT_FRAMING_BODY =
-  'You know your baby best. Speak to Kindred if anything feels different.';
+  'Please call the paramedics as soon as possible, and fill in the form while you wait.';
 
-/** The one-tap way out of the alert block. Never a dialog, never a
- * confirmation (handoff README §02). */
-export const ALERT_FRAMING_DISMISS_LABEL = 'Dismiss';
+/* ALERT_FRAMING_DISMISS_LABEL ('Dismiss') was removed with the control it
+ * named: the alert block's second action is the call control now, so there is
+ * no patient-facing way out of the alert state. Deleted rather than left
+ * exported, so nothing can re-render a dismiss affordance from a string that
+ * outlived its button. See AlertFramingBlock's header for the trade. */
 
 /**
  * The label on the product's primary action, in both the places it appears —
@@ -515,14 +537,18 @@ export const CHECK_IN_CONTROL_LABEL = 'Speak to Kindred';
  * The simulated push notification (handoff README §02, PushBanner).
  *
  * The body's first sentence IS `ALERT_FRAMING_TITLE`, composed rather than
- * retyped: this is the most safety-sensitive sentence in the product — the
- * one governed by "lead with the action and her own perception, never a
- * diagnostic assertion" — and it existed as two independent copies, either of
- * which could be edited without the other. The trailing clause is the
- * banner's own: permission to wait.
+ * retyped: this is the most safety-sensitive sentence in the product, and it
+ * existed as two independent copies, either of which could be edited without
+ * the other. So the banner inherits the alert block's new wording — and its
+ * exception to the voice rules — automatically. See ALERT_FRAMING_TITLE.
+ *
+ * THE TRAILING CLAUSE CHANGED WITH IT. It used to read "Open when you're
+ * ready." — permission to wait, which is coherent under "worth checking on"
+ * and flatly contradictory under copy that asks her to call an ambulance as
+ * soon as possible. A banner cannot say both.
  */
 export const PUSH_BANNER_TITLE = 'Kindred';
-export const PUSH_BANNER_BODY = `${ALERT_FRAMING_TITLE} Open when you're ready.`;
+export const PUSH_BANNER_BODY = `${ALERT_FRAMING_TITLE} Open now.`;
 
 /** Fixed disclaimer that must appear on every generated report. */
 export const REPORT_DISCLAIMER =
@@ -594,8 +620,11 @@ export const REPORT_VOICE_NOTE_NOTE =
 // with the rest of the copy — never inline in a component.
 //
 // Voice rules every string below obeys: second person, sentence case, no
-// exclamation mark, no uppercase warning, and never the word "detected".
-// Nothing here interprets data or offers a verdict.
+// exclamation mark, no uppercase warning, and never the word "detected" —
+// with ONE named exception, the alert-stage copy (ALERT_FRAMING_TITLE and the
+// PUSH_BANNER_BODY composed from it), which was changed by product decision
+// and is allowlisted in src/test/invariants.test.ts. Nothing else here
+// interprets data or offers a verdict.
 // ---------------------------------------------------------------------------
 
 /** 01 — the greeting, and the sync line beneath the avatar. Metadata about
@@ -819,10 +848,10 @@ export function outcomeReportSentNote(clinicName: string): string {
 // softened, because a softer wording would still be a claim.
 // ---------------------------------------------------------------------------
 
-/** The triage tier's title. Not "Please call 999 now." — in this tier 999 is
- * the quiet secondary route, not the number on the pill, and a title naming a
- * number she is not being asked to ring first would be actively wrong. */
-export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
+/** The triage tier's title. Both escalating tiers now name the action and the
+ * timing directly — this tier used to read "Call now", which named neither who
+ * to call nor that paramedics are the route. */
+export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call paramedics now.';
 
 /** The triage tier's lead. It used to be the resolved contact's own `reason`
  * ("Your clinic is open now, call this number."), which named a route that no
@@ -830,47 +859,63 @@ export const OUTCOME_ESCALATE_TRIAGE_TITLE = 'Call now';
 export const OUTCOME_ESCALATE_TRIAGE_LEAD =
   'Something you have told us needs looking at now.';
 
+/**
+ * The handover instruction, on both escalating tiers.
+ *
+ * It is an INSTRUCTION ABOUT A DOCUMENT, not a claim about what anyone will do
+ * with it: "show it to them" is a thing she can do, where "they will read it"
+ * or "it helps them decide" would be assertions about a service this app has
+ * no channel to. The report itself is the same PDF the download control below
+ * produces — see src/logic/reportPdf.ts.
+ */
+export const OUTCOME_ESCALATE_REPORT_HANDOVER =
+  'Download your report and show it to the paramedics.';
+
 export const OUTCOME_DOWNLOAD_ESCALATE_LABEL = 'Download your report to bring with you';
 export const OUTCOME_DOWNLOAD_ROUTINE_LABEL = 'Download your report';
 
-/** The routine state's title once she has pressed Send. */
-export const OUTCOME_ROUTINE_TITLE = 'Sent to your clinic';
+/**
+ * THE ROUTINE STATE, AND THE ONE SENTENCE THAT KEEPS IT HONEST.
+ *
+ * This state now says what was asked of it — that nothing was flagged, and
+ * that she can still call — and the second sentence of the lead is what stops
+ * the first from becoming the thing this whole product exists to avoid.
+ *
+ * "Nothing was flagged" is a statement about HER ANSWERS AND THE TRIAGE RULE
+ * (src/logic/disposition.ts): the ad hoc path with no positive red flag. It is
+ * not a statement about the baby, and it cannot be, because nothing in this
+ * app examines the baby. Read without the qualifier, though, a woman whose
+ * baby is in distress reads "nothing was flagged" as "nothing is wrong" — and
+ * false reassurance is the documented dominant harm in consumer fetal
+ * monitoring (the AFFIRM trial; see the README's clinical safety rules and
+ * CLAUDE.md rule 1). So the qualifier is not padding, and it is not a hedge
+ * for its own sake: it is the sentence that makes the title safe to show.
+ *
+ * The third line exists because of rule 2 — her perception always wins. It
+ * says she does not need the app's agreement to call, which is the whole of
+ * that rule expressed in one sentence at the moment it matters most.
+ */
+export const OUTCOME_ROUTINE_TITLE = 'Nothing was flagged.';
+export const OUTCOME_ROUTINE_LEAD =
+  'Your answers didn’t flag anything that needs escalating. That is about your answers, not about your baby.';
+export const OUTCOME_ROUTINE_WORRIED_NOTE =
+  'If you are still worried, call paramedics. You don’t need anyone’s agreement to do that.';
+
 /** …and when this screen is reached with nothing submitted (a direct visit to
- * /outcome, which is a real route). Nothing was sent, so nothing is claimed —
- * the screen names the clinic and states its hours, and that is all. */
+ * /outcome, which is a real route). Nothing was sent and nothing was assessed,
+ * so the title claims neither. */
 export const OUTCOME_ROUTINE_NO_SUBMISSION_TITLE = 'Your clinic';
-
-/** The one thing the app witnessed: she pressed Send, at this time. */
-export function outcomeRoutineSentLead(clinicName: string, sentClock: string): string {
-  return `Sent to ${clinicName} at ${sentClock}.`;
-}
-
-/** The clinic's hours, and nothing about what anyone there is doing. */
-export function outcomeRoutineClinicHours(
-  clinicName: string,
-  clinicOpen: boolean,
-  clinicOpensAt: string
-): string {
-  return clinicOpen ? `${clinicName} is open now.` : `${clinicName} opens at ${clinicOpensAt}.`;
-}
-
-export function outcomeRoutineWaitNote(contactLabel: string): string {
-  return `If anything changes, ${lowerFirstWord(
-    CHECK_IN_CONTROL_LABEL
-  )} again or call ${contactLabel}.`;
-}
 
 /** The routine state's plain (never red, never EmergencyCall) call row. */
 export function outcomeCallContactLabel(contactLabel: string): string {
   return `Call ${contactLabel}`;
 }
 
-/** Lowercases the first word of a schema-authored label so it can sit
- * mid-sentence. Only ever applied to copy in this file, never to anything she
- * typed. */
-function lowerFirstWord(value: string): string {
-  return value.length > 0 ? value.charAt(0).toLowerCase() + value.slice(1) : value;
-}
+/* `lowerFirstWord` was removed with its last caller. It lowercased a
+ * schema-authored label so it could sit mid-sentence, and the only string that
+ * needed that was `outcomeRoutineWaitNote` ("…speak to Kindred again or call
+ * X"), which went when the routine state was cut back to "nothing was flagged"
+ * plus the call route. */
 
 // ---------------------------------------------------------------------------
 // The triage-contact sentence (src/logic/triageContact.ts resolves WHICH
@@ -924,6 +969,10 @@ export const VOICE_NOTE_PAUSE_ACCESSIBLE_LABEL = 'Pause voice note';
 // ---------------------------------------------------------------------------
 
 export const BACK_LABEL = 'Back';
+/** The live view's dismiss control. Named for what it does — it always lands
+ * on Home — rather than "Back", which the caret used to promise and could not
+ * keep when /live was opened directly. */
+export const CLOSE_TO_HOME_LABEL = 'Close';
 
 // ---------------------------------------------------------------------------
 // Onboarding (src/screens/Onboarding.tsx and src/screens/onboarding/*).
@@ -933,7 +982,8 @@ export const BACK_LABEL = 'Back';
 // the onboarding QUESTIONS (`onboardingQuestions`, above), so the questions and
 // the chrome that presents them were split across two locations. They are one
 // location now. Same voice rules as everything above: second person, sentence
-// case, no exclamation mark, no uppercase, never the word "detected".
+// case, no exclamation mark, no uppercase, never the word "detected" (the
+// alert-stage exception above is the only one in the file).
 // ---------------------------------------------------------------------------
 
 export const ONBOARDING_CONTINUE_LABEL = 'Continue';
@@ -957,6 +1007,21 @@ export const YES_NO_UNSURE_OPTIONS: readonly { value: YesNoUnsure; label: string
   { value: 'no', label: NO_LABEL },
   { value: 'not-sure', label: NOT_SURE_LABEL },
 ];
+
+/**
+ * The opening beat, before the first question.
+ *
+ * It describes THE NEXT MINUTE AND NOTHING ELSE — what she is about to be
+ * asked, and what happens after. It makes no claim about what Kindred will
+ * do for her or the baby once she is set up, which is the rule that matters
+ * most at this particular moment: a welcome screen is exactly where a product
+ * like this would be tempted to promise it will watch over the baby, and that
+ * promise is the false reassurance the whole design exists to avoid. There is
+ * deliberately no sentence here about monitoring, watching, or knowing.
+ */
+export const ONBOARDING_WELCOME_TITLE = 'Welcome to Kindred.';
+export const ONBOARDING_WELCOME_BODY =
+  'A few questions about you and your pregnancy, then we’ll pair your band.';
 
 /** The closing pairing beat. Both lines are about the hardware and make no
  * claim about her or the baby. */

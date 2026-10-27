@@ -44,6 +44,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertFramingBlock } from '../components/AlertFramingBlock';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
+import { EmergencyCall } from '../components/EmergencyCall';
 import { KindredAvatar } from '../components/KindredAvatar';
 import { LiveDataCard } from '../components/LiveDataCard';
 import { useAppState } from '../context/AppStateContext';
@@ -78,7 +79,9 @@ const SYNC_REFRESH_MS = 30000;
  * to `bandOfflineCopy`, where the three lines are reviewed as one voice. */
 
 export default function Home(): ReactElement {
-  const { alertActive, setAlertActive, entryPath, setEntryPath, activityVariant } = useAppState();
+  // No `setAlertActive` here any more: this screen can no longer turn the
+  // alert off, only read it (see the note where handleDismiss used to be).
+  const { alertActive, entryPath, setEntryPath, activityVariant } = useAppState();
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
 
@@ -107,16 +110,11 @@ export default function Home(): ReactElement {
     navigate('/triage');
   };
 
-  // One tap, never a confirmation dialog. Clears the 'alert' entry path
-  // too, so a later ad hoc check-in isn't mislabelled as having come from
-  // this notification.
-  const handleDismiss = (): void => {
-    setAlertActive(false);
-    if (entryPath === 'alert') {
-      setEntryPath(null);
-    }
-  };
-
+  // NO DISMISS HANDLER, deliberately. The alert framing block's second action
+  // is the call control now, so nothing patient-facing clears `alertActive` —
+  // it persists until a check-in re-enters the flow. See AlertFramingBlock's
+  // header for the trade that represents. The demo panel's "Home" link and
+  // "Reset state" both still clear it, which is how a demo gets back to §01.
   const handleOpenLiveView = (): void => {
     navigate('/live');
   };
@@ -126,17 +124,18 @@ export default function Home(): ReactElement {
       {/* README §01: `padding: 32px 24px 0`, content max-width 420, centred.
           The top inset is added to the 32px rather than replacing it, so the
           greeting keeps its designed distance from the notch on hardware
-          that has one. `dock-safe` is the 112px the dock clears; no content
+          that has one. `dock-safe-tall` is the clearance the dock needs now
+          that it carries the call control under Speak to Kindred; no content
           may enter it. */}
       <div
-        className={`mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe${
+        className={`mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe-tall${
           alertActive ? ' flex flex-col gap-6' : ''
         }`}
       >
         <h1 className="text-display text-text">{homeGreeting(FIRST_NAME)}</h1>
 
         {alertActive ? (
-          <AlertFramingBlock onCheckIn={handleAlertCheckIn} onDismiss={handleDismiss} />
+          <AlertFramingBlock onCheckIn={handleAlertCheckIn} />
         ) : (
           /* Decorative presence, not a status light: it carries no face, no
              expression and no colour change, and KindredAvatar marks it
@@ -186,10 +185,19 @@ export default function Home(): ReactElement {
           screen's own CTA; bar weight on 02, where AlertFramingBlock is
           already offering the same action in the flow of the page and two
           filled accent pills would read as two different actions. Same
-          rectangle, same position, same label either way. OperatorCall is the
-          last child of every dock in the product. */}
-      <Dock>
+          rectangle, same position, same label either way.
+
+          THE CALL CONTROL IS PERMANENT, AND SITS UNDER IT. It used to appear
+          only on the triage screens and on the outcome screen's escalation
+          state, which made the route to paramedics conditional on her having
+          already started a check-in. It no longer is.
+
+          `tall` is the geometry the README defines for a dock carrying a call
+          control: 12px gaps rather than the standard 4px, so the two pills
+          read as two controls rather than one segmented one. */}
+      <Dock variant="tall">
         <CheckInControl variant={alertActive ? 'bar' : 'primary'} />
+        <EmergencyCall prominence="standard" />
       </Dock>
     </>
   );

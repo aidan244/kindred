@@ -39,16 +39,17 @@
  */
 
 import { useEffect, useState, type CSSProperties, type ReactElement } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { CaretLeft } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
+import { X } from '@phosphor-icons/react';
 import { BandMark } from '../components/BandMark';
 import { CheckInControl } from '../components/CheckInControl';
 import { Dock } from '../components/Dock';
+import { EmergencyCall } from '../components/EmergencyCall';
 import { KickTrace } from '../components/KickTrace';
 import { SessionRing } from '../components/SessionRing';
 import { useAppState } from '../context/AppStateContext';
 import {
-  BACK_LABEL,
+  CLOSE_TO_HOME_LABEL,
   LIVE_VIEW_TITLE,
   LIVE_VIEW_TRACE_START_LABEL,
   LIVE_VIEW_UNIT_CAPTION,
@@ -121,7 +122,6 @@ const BAND_MARK_SIZE = 34;
 export default function LiveView(): ReactElement {
   const { activityVariant, bandOffline, now } = useAppState();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Seeded synchronously from the stream rather than from an empty window
   // filled in by an effect: an effect runs after paint, so the screen would
@@ -202,34 +202,32 @@ export default function LiveView(): ReactElement {
   // does not pause; only her session does.
   const handleTogglePause = (): void => setPaused((current) => !current);
 
-  const handleBack = (): void => {
-    // A real pop, so RouteTransition reverses the slide (it reads
-    // react-router's navigation type, not a route ordering). `key ===
-    // 'default'` means this entry is the first in the session — someone
-    // opened /live directly — and there is nothing to pop, so go to Home
-    // explicitly instead of doing nothing.
-    if (location.key === 'default') {
-      navigate('/home');
-      return;
-    }
-    navigate(-1);
+  // AN X, NOT A CARET, AND IT ALWAYS LANDS ON HOME. The caret read as "back
+  // one screen" and popped history, which meant the same glyph went somewhere
+  // different depending on how she arrived — and on a direct visit to /live it
+  // had nothing to pop and had to special-case Home anyway. The live view is a
+  // thing you open and close, not a level in a hierarchy, so it now says so:
+  // one destination, no history-dependent behaviour, nothing to reason about.
+  const handleClose = (): void => {
+    navigate('/home');
   };
 
   return (
     <>
       {/* README §08: `padding: 32px 24px 0`, content max-width 420, centred.
           The top inset is added to the 32px rather than replacing it, so the
-          header keeps its designed distance from the notch. `dock-safe` is the
-          112px the dock clears; no content may enter it. */}
-      <div className="mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe">
+          header keeps its designed distance from the notch. `dock-safe-tall`
+          is the clearance the dock needs now that it carries the call control
+          under Speak to Kindred; no content may enter it. */}
+      <div className="mx-auto w-full max-w-[var(--content-max)] px-6 pt-[calc(env(safe-area-inset-top,0px)+32px)] dock-safe-tall">
         <header className="flex items-center gap-4">
           <button
             type="button"
-            onClick={handleBack}
-            aria-label={BACK_LABEL}
+            onClick={handleClose}
+            aria-label={CLOSE_TO_HOME_LABEL}
             className="press tap -ml-4 flex shrink-0 items-center justify-center text-text-muted"
           >
-            <CaretLeft size={24} weight="light" aria-hidden="true" />
+            <X size={24} weight="light" aria-hidden="true" />
           </button>
           <h1 className="text-title text-text">{LIVE_VIEW_TITLE}</h1>
         </header>
@@ -295,10 +293,13 @@ export default function LiveView(): ReactElement {
       </div>
 
       {/* Bar weight: Speak to Kindred is not this screen's own call to action,
-          it is the same always-reachable control it is everywhere else.
-          OperatorCall is the last child of every dock in the product. */}
-      <Dock>
+          it is the same always-reachable control it is everywhere else. The
+          call control sits under it, on this screen as on every other — see
+          Home.tsx's dock note for why it is permanent, and why the dock is
+          `tall` once it carries two pills. */}
+      <Dock variant="tall">
         <CheckInControl variant="bar" />
+        <EmergencyCall prominence="standard" />
       </Dock>
     </>
   );

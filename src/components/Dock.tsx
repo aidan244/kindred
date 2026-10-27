@@ -38,12 +38,19 @@
  * route transition without re-mounting.
  *
  * That is a narrower claim than "every dock contains an emergency control",
- * and deliberately so. WHICH controls a dock carries is the README's decision,
- * per screen, and it differs: §03/§04/§05 stack EmergencyCall + the 999 note +
- * the operator row; §01/§02/§08 stack CheckInControl + the operator row; §06's
- * review dock is the send pill + its note + the operator row, with no
- * emergency control at all (see ReviewStep.tsx, which states why). Every one
- * of those is a composition chosen and visible at the call site. This
+ * and deliberately so. WHICH controls a dock carries is a decision made per
+ * screen, and it differs: §03/§04/§05 stack EmergencyCall on its own; §01/§02/
+ * §08 and the routine outcome stack CheckInControl with EmergencyCall under
+ * it; §06's review dock is the send pill + its note, with no emergency control
+ * at all (see ReviewStep.tsx, which states why). Every one of those is a
+ * composition chosen and visible at the call site.
+ *
+ * THE CALL CONTROL IS NOW ON EVERY SCREEN BUT ONE. It used to appear only on
+ * the triage screens and the outcome screen's escalation state. Because it is
+ * a second pill in the docks that also carry Speak to Kindred, those docks
+ * moved from `standard` to `tall` — the 4px standard gap was designed for one
+ * pill above a quiet text row, and reads as a segmented control between two
+ * pills. ReviewStep is the remaining exception, and its reasoning is its own. This
  * fallback is only about the rectangle itself never disappearing underneath
  * whichever composition a screen chose.
  *
